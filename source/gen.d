@@ -342,9 +342,8 @@ void genForest(Setter set, ref Random rng, int radius) {
 				else {
 					if (uniform(0, 8, rng) == 0) {
 						block = Blocks.clay;
-					}
-					else {
-						continue;
+					}else{
+						block = Blocks.sand;
 					}
 				}
 				foreach (ax; x - width .. x + width) {

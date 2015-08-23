@@ -50,7 +50,7 @@ void main(string[] args) {
 	bool verbose = true;
 	string world = "world";
 	uint seed;
-	uint size = 512;
+	uint size = 640;
 	bool seedSet;
 	void setSeed(string, string val) {
 		try {
@@ -67,10 +67,10 @@ void main(string[] args) {
 	if (getopt(args, "v|verbose", &verbose, "w|world", &world, "s|seed",
 			&setSeed, "z|size", &size).helpWanted) {
 		writeln(`world_gen
--vtrue    --verbose=  be loud
--w"world" --world=    set world name
--s        --seed=     world seed
--z256     --size=     world size(radius)
+-v --verbose=  be loud
+-w --world=    set world name
+-s --seed=     world seed
+-z --size=     world size(radius)
 `);
 		return;
 	}
