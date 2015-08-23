@@ -72,6 +72,7 @@ void main(string[] args) {
 -s        --seed=     world seed
 -z256     --size=     world size(radius)
 `);
+		return;
 	}
 
 	if (exists(world)) {
@@ -113,8 +114,5 @@ void main(string[] args) {
 	lev.calculateSkyLight1(verbose, list);
 	lev.calculateSkyLight2(verbose, list);
 	lev.tileWater(verbose, list);
-	if (verbose) {
-		writeln("Saving the world");
-	}
 	lev.save(region, verbose);
 }
