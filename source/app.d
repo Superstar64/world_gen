@@ -52,6 +52,8 @@ void main(string[] args) {
 	uint seed;
 	uint size = 640;
 	bool seedSet;
+	int radius = 250;
+	int chuck = 512;
 	void setSeed(string, string val) {
 		try {
 			seed = val.to!uint;
@@ -65,12 +67,14 @@ void main(string[] args) {
 	}
 
 	if (getopt(args, "v|verbose", &verbose, "w|world", &world, "s|seed",
-			&setSeed, "z|size", &size).helpWanted) {
+			&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck).helpWanted) {
 		writeln(`world_gen
 -v --verbose=  be loud
 -w --world=    set world name
 -s --seed=     world seed
--z --size=     world size(radius)
+-z --size=     world size
+-r --radius=   island radius(default = 250)
+-c --chuck=    island fequency(recommend radius*2 + 12)
 `);
 		return;
 	}
@@ -108,7 +112,7 @@ void main(string[] args) {
 	else {
 		rng = rndGen();
 	}
-	auto lev = genLevel(rng, size, verbose);
+	auto lev = genLevel(rng, size, verbose, radius, chuck);
 	auto list = lev.genChunkList;
 	lev.calculateBlockLight(verbose, list);
 	lev.calculateSkyLight1(verbose, list);

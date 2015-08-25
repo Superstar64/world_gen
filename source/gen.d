@@ -7,17 +7,17 @@ import std.math;
 import std.typetuple;
 import noise;
 
-Level genLevel(ref Random rng, int size, bool verbose) {
+Level genLevel(ref Random rng, int size, bool verbose, int radius, int chunk) {
 	Level lev = new Level();
 	auto set = Setter(levelSet(lev, size), levelGet(lev, size), levelSetEntity(lev,
 		size));
-	generate(set, rng, size, verbose);
+	generate(set, rng, size, verbose, radius, chunk);
 	fill(lev, Blocks.air, LevelPos(-size, 255, -size), LevelPos(size, 256, size)); //todo light calculating glitches out when block at sky limit
 	return lev;
 }
 
-void generate(Setter set, ref Random rng, int size, bool verbose) {
-	enum chunk = 512;
+void generate(Setter set, ref Random rng, int size, bool verbose, int radius = 250,
+	int chunk = 512) {
 	auto iter = size / chunk;
 
 	size_t total;
@@ -37,7 +37,7 @@ void generate(Setter set, ref Random rng, int size, bool verbose) {
 				writef("Generating island at (%#5s,%#5s) %s%%\r", x, z, cur * 100 / total);
 				stdout.flush;
 			}
-			genForest(set.from(transformOff(x, 127 - 16, z)), rng, 250);
+			genForest(set.from(transformOff(x, 127 - 16, z)), rng, radius);
 			cur++;
 		}
 	}
@@ -260,7 +260,7 @@ void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 		}
 	}
 
-	foreach (i; 0 .. 1000) {
+	foreach (i; 0 .. radius * 4) {
 		genOre(Blocks.diamond_ore);
 		genOre(Blocks.gold_ore);
 		genOre(Blocks.lapis_ore);
@@ -342,7 +342,8 @@ void genForest(Setter set, ref Random rng, int radius) {
 				else {
 					if (uniform(0, 8, rng) == 0) {
 						block = Blocks.clay;
-					}else{
+					}
+					else {
 						block = Blocks.sand;
 					}
 				}
