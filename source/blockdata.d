@@ -1,5 +1,6 @@
 import level : Block;
 import std.traits;
+
 enum Transparent {
 	None,
 	Full,
@@ -22,7 +23,6 @@ struct BlockData {
 
 enum BlockIDToName = {
 
-
 	string[int] map;
 	foreach (E;
 	EnumMembers!Blocks) {
@@ -33,10 +33,10 @@ enum BlockIDToName = {
 	return map;
 }();
 
-auto getTrans(ubyte id){
-	foreach(E;EnumMembers!Blocks){
-		if(E.search){
-			if(E.id == id){
+auto getTrans(ubyte id) {
+	foreach (E; EnumMembers!Blocks) {
+		if (E.search) {
+			if (E.id == id) {
 				return E.trans;
 			}
 		}
@@ -44,16 +44,17 @@ auto getTrans(ubyte id){
 	assert(0);
 }
 
-auto getLight(ubyte id){
-	foreach(E;EnumMembers!Blocks){
-		if(E.search){
-			if(E.id == id){
+auto getLight(ubyte id) {
+	foreach (E; EnumMembers!Blocks) {
+		if (E.search) {
+			if (E.id == id) {
 				return E.light;
 			}
 		}
 	}
 	assert(0);
 }
+
 //in game names from minecraft wiki
 enum Blocks : BlockData {
 	air = BlockData(0, 0, Transparent.Full),
