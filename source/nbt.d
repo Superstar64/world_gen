@@ -36,7 +36,7 @@ auto readNBTBuffer(ubyte[] file) {
 	}
 }
 
-void writeNBTFile(string fileName, NBTRoot root, int type = 0) {
+void writeNBTFile(string fileName, const NBTRoot root, int type = 0) {
 	static import std.file;
 
 	ubyte[] buf;
@@ -44,7 +44,7 @@ void writeNBTFile(string fileName, NBTRoot root, int type = 0) {
 	std.file.write(fileName, buf);
 }
 
-void writeNBTBuffer(ref ubyte[] buffer, NBTRoot root, int type = 0) {
+void writeNBTBuffer(ref ubyte[] buffer,const NBTRoot root, int type = 0) {
 	(cast(byte) 10).writeBasic(buffer);
 	root.name.writeBasicArray!short(buffer);
 	root.tag.write(buffer);

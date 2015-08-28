@@ -23,35 +23,16 @@ private struct Pos {
 	int z;
 }
 
-private struct InteralBlock {
-	ubyte id;
-	mixin(bitfields!(ubyte, "meta", 4, ubyte, "add", 4, ubyte, "blockLight",
-		4, ubyte, "skyLight", 4));
-	ubyte getLightFromID() {
-		foreach (BData; EnumMembers!Blocks) {
-			static if (BData.search) {
-				if (id == BData.id) {
-					return BData.light;
-				}
-			}
-		}
-		return 0;
-	}
-
-	Transparent getTransFromID() {
-		foreach (BData; EnumMembers!Blocks) {
-			static if (BData.search) {
-				if (id == BData.id) {
-					return BData.trans;
-				}
-			}
-		}
-		return Transparent.None;
-	}
+private struct ChunkInteral{
+	byte[16 * 16 * 16] ids;
+	byte[16 * 16 * 16 / 2] data;
+	byte[16 * 16 * 16 / 2] bLight;
+	byte[16 * 16 * 16 / 2] sLight;
 }
+private byte[256] nullBiomes;
 
 private struct Chunk {
-	InteralBlock[256 * 16 * 16] blocks;
+	ChunkInteral*[16] parts;
 	int[16 * 16] heightMap;
 	Tag_Compound[] entites;
 	LevelPos[] tileTicks;
@@ -69,58 +50,26 @@ private struct Chunk {
 				level["TerrainPopulated"] = Tag_Byte(1);
 				level["V"] = Tag_Byte(1);
 				level["InhabitedTime"] = Tag_Long(1);
-				level["Biomes"] = Tag_Byte_Array(new byte[256]);
-				level["HeightMap"] = Tag_Int_Array(heightMap.dup);
+				level["Biomes"] = Tag_Byte_Array(nullBiomes);
+				level["HeightMap"] = Tag_Int_Array(heightMap[]);
 				Tag_Compound[] sections;
-				{
-					foreach (i; 0 .. 16) {
-						auto ids = new byte[16 * 16 * 16];
-						auto meta = new byte[16 * 16 * 16 / 2];
-						auto blockLight = new byte[16 * 16 * 16 / 2];
-						auto skyLight = new byte[16 * 16 * 16 / 2];
-						foreach (y; 0 .. 16) {
-							foreach (z; 0 .. 16) {
-								foreach (x; 0 .. 16) {
-									auto block = getBlock(x, y + (16 * i), z);
-									auto offset = x + z * 16 + y * 16 * 16;
-									ids[offset] = block.id;
-									offset /= 2;
-									if (x % 2 == 0) {
-										meta[offset] |= block.meta;
-										blockLight[offset] |= block.blockLight;
-										skyLight[offset] |= block.skyLight;
-									}
-									else {
-										meta[offset] |= (block.meta << 4);
-										blockLight[offset] |= (block.blockLight << 4);
-										skyLight[offset] |= (block.skyLight << 4);
-									}
-
-								}
-							}
-						}
-						foreach (id; ids) {
-							if (id != 0) {
-								Tag_Compound section;
-								section["Y"] = Tag_Byte(cast(byte) i);
-								section["Blocks"] = Tag_Byte_Array(ids);
-								section["Data"] = Tag_Byte_Array(meta);
-								section["BlockLight"] = Tag_Byte_Array(blockLight);
-								section["SkyLight"] = Tag_Byte_Array(skyLight);
-								sections ~= section;
-								break;
-							}
-						}
-						continue;
+				foreach(c,sec;parts){
+					if(sec){
+						Tag_Compound section;
+						section["Y"] = Tag_Byte(cast(byte) c);
+						section["Blocks"] = Tag_Byte_Array(sec.ids);
+						section["Data"] = Tag_Byte_Array(sec.data);
+						section["BlockLight"] = Tag_Byte_Array(sec.bLight);
+						section["SkyLight"] = Tag_Byte_Array(sec.sLight);
+						sections ~= section;
 					}
 				}
 				level["Sections"] = Tag_List(sections);
 				level["Entities"] = Tag_List(entites);
 				Tag_Compound[] tileEntities;
 				foreach (t; tileTicks) {
-					auto block = getBlock(t.x & 15, t.y, t.z & 15);
 					Tag_Compound tile;
-					tile["i"] = Tag_String(BlockIDToName[block.id].dup);
+					tile["i"] = Tag_String(BlockIDToName[getBlockID(t.x & 0xf,t.y,t.z & 0xf)].dup);
 					tile["t"] = Tag_Int(0);
 					tile["p"] = Tag_Int(0);
 					tile["x"] = Tag_Int(t.x);
@@ -135,16 +84,139 @@ private struct Chunk {
 		writeNBTBuffer(buffer, root, 1);
 		return buffer;
 	}
-
-	ref InteralBlock getBlock(uint x, uint y, uint z) {
+	
+	auto getOff(uint x,uint y,uint z){
+		return x + z * 16 + (y % 16) * 16 * 16;
+	}
+	
+	ubyte getBlockID(uint x, uint y, uint z) {
 		assert(y < 256);
 		assert(x < 16);
 		assert(z < 16);
-		return blocks[x + z * 16 + y * 16 * 16];
+		size_t sec = y/16;
+		if(!parts[sec]){
+			return 0;
+		}
+		return parts[sec].ids[x + z * 16 + (y % 16) * 16 * 16];
+	}
+	
+	ubyte getMeta(uint x, uint y, uint z) {
+		assert(y < 256);
+		assert(x < 16);
+		assert(z < 16);
+		size_t sec = y/16;
+		if(!parts[sec]){
+			return 0;
+		}
+		auto off = parts[sec].data[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		if(x % 2 ==0){
+			return off & 0xf;
+		}else{
+			return (off & 0xf0) >> 4;
+		}
+	}
+	
+	ubyte getBLight(uint x, uint y, uint z) {
+		assert(y < 256);
+		assert(x < 16);
+		assert(z < 16);
+		size_t sec = y/16;
+		if(!parts[sec]){
+			return 0;
+		}
+		auto off = parts[sec].bLight[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		if(x % 2 ==0){
+			return off & 0xf;
+		}else{
+			return (off & 0xf0) >> 4;
+		}
+	}
+	
+	ubyte getSLight(uint x, uint y, uint z) {
+		assert(y < 256);
+		assert(x < 16);
+		assert(z < 16);
+		size_t sec = y/16;
+		if(!parts[sec]){
+			return 0;
+		}
+		auto off = parts[sec].sLight[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		if(x % 2 ==0){
+			return off & 0xf;
+		}else{
+			return (off & 0xf0) >> 4;
+		}
+	}
+	
+	void setBlockID(uint x, uint y, uint z,ubyte id) {
+		assert(y < 256);
+		assert(x < 16);
+		assert(z < 16);
+		size_t sec = y/16;
+		if(!parts[sec]){
+			parts[sec] = new ChunkInteral;
+		}
+		parts[sec].ids[x + z * 16 + (y % 16) * 16 * 16] = id;
+	}
+	
+	void setMeta(uint x, uint y, uint z,ubyte data) {
+		assert(y < 256);
+		assert(x < 16);
+		assert(z < 16);
+		assert(data < 16);
+		size_t sec = y/16;
+		if(!parts[sec]){
+			parts[sec] = new ChunkInteral;
+		}
+		auto off = parts[sec].data[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		if(x % 2 ==0){
+			parts[sec].data[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf0) | data);
+		}else{
+			parts[sec].data[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf) | (data << 4));
+		}
+	}
+	
+	void setBLight(uint x, uint y, uint z,ubyte data) {
+		assert(y < 256);
+		assert(x < 16);
+		assert(z < 16);
+		assert(data < 16);
+		size_t sec = y/16;
+		if(!parts[sec]){
+			parts[sec] = new ChunkInteral;
+		}
+		auto off = parts[sec].bLight[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		if(x % 2 ==0){
+			parts[sec].bLight[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf0) | data);
+		}else{
+			parts[sec].bLight[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf) | (data << 4));
+		}
+	}
+	
+	void setSLight(uint x, uint y, uint z,ubyte data) {
+		assert(y < 256);
+		assert(x < 16);
+		assert(z < 16);
+		assert(data < 16);
+		size_t sec = y/16;
+		if(!parts[sec]){
+			parts[sec] = new ChunkInteral;
+		}
+		auto off = parts[sec].sLight[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		if(x % 2 ==0){
+			parts[sec].sLight[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf0) | data);
+		}else{
+			parts[sec].sLight[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf) | (data << 4));
+		}
 	}
 
 	ref int getHeight(uint x, uint z) {
 		return heightMap[x + z * 16];
+	}
+	
+	bool ysection(uint y){
+		assert(y < 256);
+		return parts[y / 16] !is null;
 	}
 }
 
@@ -160,12 +232,12 @@ class Level {
 	}
 
 	Block opIndex(int x, int y, int z) {
-		return Block(block(x, y, z).id, block(x, y, z).meta);
+		return Block(getBlockID(x,y,z),getMeta(x,y,z));
 	}
 
 	Block opIndexAssign(Block b, int x, int y, int z) {
-		block(x, y, z).id = b.id;
-		block(x, y, z).meta = b.meta;
+		setBlockID(x,y,z,b.id);
+		setMeta(x,y,z,b.meta);
 		return b;
 	}
 
@@ -178,16 +250,11 @@ class Level {
 	bool exists(int x, int y, int z) {
 		assert(y >= 0 && y < 256);
 		auto pos = Pos(x >> 4, z >> 4);
-		return !!(pos in chunks);
+		return !!(pos in chunks) && chunks[pos].ysection(y);
 	}
 
 	void setEntity(Tag_Compound e, LevelPos pos) {
 		setEntity(e, pos.x, pos.y, pos.z);
-	}
-
-	static struct ChunkElm {
-		Pos pos;
-		Chunk* chunk;
 	}
 
 	auto genChunkList() {
@@ -260,12 +327,6 @@ class Level {
 	}
 
 private:
-	ref InteralBlock block(int x, int y, int z) {
-		assert(y >= 0 && y < 256);
-		auto pos = Pos(x >> 4, z >> 4);
-		tryCreateChunk(pos);
-		return chunks[pos].getBlock(x & 15, y, z & 15);
-	}
 
 	void addTileTick(int x, int y, int z) {
 		assert(exists(x, y, z));
@@ -294,6 +355,73 @@ private:
 		auto pos = Pos(x >> 4, z >> 4);
 		return !!(pos in chunks);
 	}
+	
+	ubyte getBlockID(int x, uint y, int z) {
+		assert(y < 256);
+		if(!exists2(x,z)){
+			return 0;
+		}
+		return chunks[Pos(x>>4,z>>4)].getBlockID(x & 0xf, y , z & 0xf);
+	}
+	
+	ubyte getMeta(int x, int y, int z) out(result){assert(result < 16);}
+	body {
+		assert(y < 256);
+		if(!exists2(x,z)){
+			return 0;
+		}
+		return chunks[Pos(x>>4,z>>4)].getMeta(x & 0xf, y , z & 0xf);
+	}
+	
+	ubyte getBLight(int x, uint y, int z) out(result){assert(result < 16);}
+	body{
+		assert(y < 256);
+		if(!exists2(x,z)){
+			return 0;
+		}
+		return chunks[Pos(x>>4,z>>4)].getBLight(x & 0xf, y , z & 0xf);
+	}
+	
+	ubyte getSLight(int x, uint y, int z) out(result){assert(result < 16);}
+	body{
+		assert(y < 256);
+		if(!exists2(x,z)){
+			return 0;
+		}
+		return chunks[Pos(x>>4,z>>4)].getSLight(x & 0xf, y , z & 0xf);
+	}
+	
+	void setBlockID(int x, uint y, int z,ubyte id) {
+		assert(y < 256);
+		auto pos = Pos(x>>4,z>>4);
+		tryCreateChunk(pos);
+		return chunks[pos].setBlockID(x & 0xf, y , z & 0xf,id);
+	}
+	
+	void setMeta(int x, uint y, int z,ubyte data) {
+		assert(y < 256);
+		assert(data < 16);
+		auto pos = Pos(x>>4,z>>4);
+		tryCreateChunk(pos);
+		return chunks[pos].setMeta(x & 0xf, y , z & 0xf,data);
+	}
+	
+	void setBLight(int x, uint y, int z,ubyte data) {
+		assert(y < 256);
+		assert(data < 16);
+		auto pos = Pos(x>>4,z>>4);
+		tryCreateChunk(pos);
+		return chunks[pos].setBLight(x & 0xf, y , z & 0xf,data);
+	}
+	
+	void setSLight(int x, uint y, int z,ubyte data) {
+		assert(y < 256);
+		assert(data < 16);
+		auto pos = Pos(x>>4,z>>4);
+		tryCreateChunk(pos);
+		return chunks[pos].setSLight(x & 0xf, y , z & 0xf,data);
+	}
+	
 }
 
 void save(Level lev, string regionPath, bool verbose) {
@@ -362,6 +490,11 @@ void save(Level lev, string regionPath, bool verbose) {
 
 private:
 
+static struct ChunkElm {
+	Pos pos;
+	Chunk* chunk;
+}
+
 struct Region {
 	Chunk*[32 * 32] chunks;
 
@@ -371,20 +504,20 @@ struct Region {
 }
 
 void calcBlockLight(Level lev, ref Chunk chunk, int offx, int offz) {
-	void spreadStart(InteralBlock b, int x, int y, int z) {
-		ubyte light = b.getLightFromID;
-		if (light > 0) {
-
-			spread!(a => a.blockLight, (ref b, l) => b.blockLight = l)(lev, light,
-				x, y, z);
+	void spreadStart(int x, int y, int z) {
+		if(chunk.ysection(y)){
+			ubyte light = lev.getBlockID(x,y,z).getLight;
+			if (light > 0) {
+				spread!((x,y,z) => lev.getBLight(x,y,z),(x,y,z,l) => lev.setBLight(x,y,z,l))(lev, light,
+					x, y, z);
+			}
 		}
 	}
 
 	foreach (y; 0 .. 256) {
 		foreach (cz; 0 .. 16) {
-			foreach (cx; 0 .. 16) {
-				auto block = chunk.getBlock(cx, y, cz);
-				spreadStart(block, cx + offx * 16, y, cz + offz * 16);
+			foreach (cx; 0 .. 16) {	
+				spreadStart(cx + offx * 16, y, cz + offz * 16);
 			}
 		}
 	}
@@ -394,13 +527,14 @@ void calcSkyLight1(Level lev, ref Chunk chunk) {
 	foreach (cz; 0 .. 16) {
 		foreach (cx; 0 .. 16) {
 			foreach_reverse (y; 0 .. 256) {
-				auto block = chunk.getBlock(cx, y, cz);
-				Transparent type = block.getTransFromID;
-				if (type != Transparent.Full) {
-					break;
+				if(chunk.ysection(y)){
+					auto type = chunk.getBlockID(cx, y, cz).getTrans;
+					if (type != Transparent.Full) {
+						break;
+					}
+					chunk.setSLight(cx,y,cz,15);
+					chunk.heightMap[cx + cz * 16] = y;
 				}
-				chunk.getBlock(cx, y, cz).skyLight = 15;
-				chunk.heightMap[cx + cz * 16] = y;
 			}
 		}
 	}
@@ -428,17 +562,17 @@ void calcSkyLight2(Level lev, ref Chunk chunk, int offx, int offz) {
 			scan(0, -1);
 			scan(0, 1);
 			foreach (y; height .. maxHeight) {
-				spread!(a => a.skyLight, (ref b, l) => b.skyLight = l)(lev, 14, x - 1,
+				spread!((x,y,z) => lev.getSLight(x,y,z),(x,y,z,l) => lev.setSLight(x,y,z,l))(lev, 14, x - 1,
 					y, z);
-				spread!(a => a.skyLight, (ref b, l) => b.skyLight = l)(lev, 14, x + 1,
+				spread!((x,y,z) => lev.getSLight(x,y,z),(x,y,z,l) => lev.setSLight(x,y,z,l))(lev, 14, x + 1,
 					y, z);
-				spread!(a => a.skyLight, (ref b, l) => b.skyLight = l)(lev, 14, x,
+				spread!((x,y,z) => lev.getSLight(x,y,z),(x,y,z,l) => lev.setSLight(x,y,z,l))(lev, 14, x,
 					y, z - 1);
-				spread!(a => a.skyLight, (ref b, l) => b.skyLight = l)(lev, 14, x,
+				spread!((x,y,z) => lev.getSLight(x,y,z),(x,y,z,l) => lev.setSLight(x,y,z,l))(lev, 14, x,
 					y, z + 1);
 			}
 			if (height > 0) {
-				spread!(a => a.skyLight, (ref b, l) => b.skyLight = l)(lev, 14, x,
+				spread!((x,y,z) => lev.getSLight(x,y,z),(x,y,z,l) => lev.setSLight(x,y,z,l))(lev, 14, x,
 					height - 1, z);
 			}
 		}
@@ -446,13 +580,13 @@ void calcSkyLight2(Level lev, ref Chunk chunk, int offx, int offz) {
 }
 
 void tileTickWater(Level lev, ref Chunk chunk, int offx, int offz) {
-	void tileWater(InteralBlock b, int x, int y, int z) {
+	void tileWater(int x, int y, int z) {
 
-		if (b.id == Blocks.water.id) {
+		if (lev.getBlockID(x,y,z) == Blocks.water.id) {
 			foreach (xI; TypeTuple!(-1, 1)) {
 				foreach (zI; TypeTuple!(-1, 1)) {
-					if (!lev.exists(x + xI, y, z + zI) || lev.block(x + xI, y, z + zI).id == 0) {
-						lev.block(x, y, z).id = Blocks.flowing_water.id;
+					if (!lev.exists(x + xI, y, z + zI) || lev.getBlockID(x + xI, y, z + zI) == 0) {
+						lev.setBlockID(x, y, z,Blocks.flowing_water.id);
 						lev.addTileTick(x, y, z);
 						return;
 					}
@@ -464,8 +598,7 @@ void tileTickWater(Level lev, ref Chunk chunk, int offx, int offz) {
 	foreach (y; 0 .. 256) {
 		foreach (cz; 0 .. 16) {
 			foreach (cx; 0 .. 16) {
-				auto block = chunk.getBlock(cx, y, cz);
-				tileWater(block, cx + offx * 16, y, cz + offz * 16);
+				tileWater(cx + offx * 16, y, cz + offz * 16);
 			}
 		}
 	}
@@ -473,8 +606,7 @@ void tileTickWater(Level lev, ref Chunk chunk, int offx, int offz) {
 
 void spread(alias lightGet, alias lightSet)(Level lev, ubyte light, int x, int y, int z) {
 	if (lev.exists(x, y, z)) {
-		auto block = lev.block(x, y, z);
-		Transparent type = block.getTransFromID;
+		auto type = lev.getBlockID(x, y, z).getTrans;
 		if (type == Transparent.None) {
 			return;
 		}
@@ -484,12 +616,13 @@ void spread(alias lightGet, alias lightSet)(Level lev, ubyte light, int x, int y
 			}
 			light -= 2;
 		}
-		if (lightGet(block) < light) {
-			lightSet(lev.block(x, y, z), light);
+		if (lightGet(x,y,z) < light) {
+			lightSet(x,y,z,light);
 		}
 		else {
 			return;
 		}
+		assert(light >= lightGet(x,y,z));
 		if (light <= 1) {
 			return;
 		}
