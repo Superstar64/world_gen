@@ -113,10 +113,6 @@ void main(string[] args) {
 		rng = rndGen();
 	}
 	auto lev = genLevel(rng, size, verbose, radius, chuck);
-	auto list = lev.genChunkList;
-	lev.calculateBlockLight(verbose, list);
-	lev.calculateSkyLight1(verbose, list);
-	lev.calculateSkyLight2(verbose, list);
-	lev.tileWater(verbose, list);
+	lev.calculateLightandWater(verbose);
 	lev.save(region, verbose);
 }

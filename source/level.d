@@ -97,7 +97,7 @@ private struct Chunk {
 		if(!parts[sec]){
 			return 0;
 		}
-		return parts[sec].ids[x + z * 16 + (y % 16) * 16 * 16];
+		return parts[sec].ids[getOff(x,y,z)];
 	}
 	
 	ubyte getMeta(uint x, uint y, uint z) {
@@ -108,7 +108,7 @@ private struct Chunk {
 		if(!parts[sec]){
 			return 0;
 		}
-		auto off = parts[sec].data[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		auto off = parts[sec].data[getOff(x,y,z)/2];
 		if(x % 2 ==0){
 			return off & 0xf;
 		}else{
@@ -124,7 +124,7 @@ private struct Chunk {
 		if(!parts[sec]){
 			return 0;
 		}
-		auto off = parts[sec].bLight[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		auto off = parts[sec].bLight[getOff(x,y,z)/2];
 		if(x % 2 ==0){
 			return off & 0xf;
 		}else{
@@ -140,7 +140,7 @@ private struct Chunk {
 		if(!parts[sec]){
 			return 0;
 		}
-		auto off = parts[sec].sLight[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		auto off = parts[sec].sLight[getOff(x,y,z)/2];
 		if(x % 2 ==0){
 			return off & 0xf;
 		}else{
@@ -156,7 +156,7 @@ private struct Chunk {
 		if(!parts[sec]){
 			parts[sec] = new ChunkInteral;
 		}
-		parts[sec].ids[x + z * 16 + (y % 16) * 16 * 16] = id;
+		parts[sec].ids[getOff(x,y,z)] = id;
 	}
 	
 	void setMeta(uint x, uint y, uint z,ubyte data) {
@@ -168,11 +168,11 @@ private struct Chunk {
 		if(!parts[sec]){
 			parts[sec] = new ChunkInteral;
 		}
-		auto off = parts[sec].data[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		auto off = parts[sec].data[getOff(x,y,z)/2];
 		if(x % 2 ==0){
-			parts[sec].data[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf0) | data);
+			parts[sec].data[getOff(x,y,z)/2] = cast(byte)((off & 0xf0) | data);
 		}else{
-			parts[sec].data[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf) | (data << 4));
+			parts[sec].data[getOff(x,y,z)/2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
 	
@@ -185,11 +185,11 @@ private struct Chunk {
 		if(!parts[sec]){
 			parts[sec] = new ChunkInteral;
 		}
-		auto off = parts[sec].bLight[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		auto off = parts[sec].bLight[getOff(x,y,z)/2];
 		if(x % 2 ==0){
-			parts[sec].bLight[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf0) | data);
+			parts[sec].bLight[getOff(x,y,z)/2] = cast(byte)((off & 0xf0) | data);
 		}else{
-			parts[sec].bLight[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf) | (data << 4));
+			parts[sec].bLight[getOff(x,y,z)/2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
 	
@@ -202,11 +202,11 @@ private struct Chunk {
 		if(!parts[sec]){
 			parts[sec] = new ChunkInteral;
 		}
-		auto off = parts[sec].sLight[(x + z * 16 + (y % 16) * 16 * 16)/2];
+		auto off = parts[sec].sLight[getOff(x,y,z)/2];
 		if(x % 2 ==0){
-			parts[sec].sLight[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf0) | data);
+			parts[sec].sLight[getOff(x,y,z)/2] = cast(byte)((off & 0xf0) | data);
 		}else{
-			parts[sec].sLight[(x + z * 16 + (y % 16) * 16 * 16)/2] = cast(byte)((off & 0xf) | (data << 4));
+			parts[sec].sLight[getOff(x,y,z)/2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
 
@@ -257,68 +257,19 @@ class Level {
 		setEntity(e, pos.x, pos.y, pos.z);
 	}
 
-	auto genChunkList() {
-		ChunkElm[] list;
-		foreach (pos, ref chunk; chunks) {
-			list ~= ChunkElm(pos, &chunk);
-		}
-		list.sort!("a.chunk < b.chunk"); //yes, compare the pointers
-		return list;
-	}
-
-	void calculateBlockLight(bool print, ChunkElm[] chunks) {
-		foreach (c, chunkElm; chunks) {
+	void calculateLightandWater(bool print) {
+		auto list = genChunkList();
+		
+		foreach (c, chunkElm; list) {
 			auto pos = chunkElm.pos;
 			if (print) {
-				writef("Calcutaing block light for chunk(%#5s,%#5s) %s%%\r",
-					pos.x, pos.z, c * 100 / chunks.length);
+				writef("Calcutaing light and water for chunk(%#5s,%#5s) %s%%\r",
+					pos.x, pos.z, c * 100 / list.length);
 				stdout.flush;
 			}
 			calcBlockLight(this, *chunkElm.chunk, pos.x, pos.z);
-		}
-		if (print) {
-			writeln();
-		}
-	}
-
-	void calculateSkyLight1(bool print, ChunkElm[] chunks) {
-		foreach (c, chunkElm; chunks) {
-			auto pos = chunkElm.pos;
-			if (print) {
-				writef("Calcutaing sky light 1 for chunk(%#5s,%#5s) %s%%\r",
-					pos.x, pos.z, c * 100 / chunks.length);
-				stdout.flush;
-			}
 			calcSkyLight1(this, *chunkElm.chunk);
-		}
-		if (print) {
-			writeln();
-		}
-	}
-
-	void calculateSkyLight2(bool print, ChunkElm[] chunks) {
-		foreach (c, chunkElm; chunks) {
-			auto pos = chunkElm.pos;
-			if (print) {
-				writef("Calcutaing sky light 2 for chunk(%#5s,%#5s) %s%%\r",
-					pos.x, pos.z, c * 100 / chunks.length);
-				stdout.flush;
-			}
 			calcSkyLight2(this, *chunkElm.chunk, pos.x, pos.z);
-		}
-		if (print) {
-			writeln();
-		}
-	}
-
-	void tileWater(bool print, ChunkElm[] chunks) {
-		foreach (c, chunkElm; chunks) {
-			auto pos = chunkElm.pos;
-			if (print) {
-				writef("TileTicking water for      chunk(%#5s,%#5s) %s%%\r",
-					pos.x, pos.z, c * 100 / chunks.length);
-				stdout.flush;
-			}
 			tileTickWater(this, *chunkElm.chunk, pos.x, pos.z);
 		}
 		if (print) {
@@ -327,6 +278,16 @@ class Level {
 	}
 
 private:
+
+   auto genChunkList() {
+		ChunkElm[] list;
+		foreach (pos, ref chunk; chunks) {
+		   list ~= ChunkElm(pos, &chunk);
+		}
+		list.sort!("a.chunk < b.chunk"); //yes, compare the pointers
+		return list;
+    }
+
 
 	void addTileTick(int x, int y, int z) {
 		assert(exists(x, y, z));
@@ -491,9 +452,10 @@ void save(Level lev, string regionPath, bool verbose) {
 private:
 
 static struct ChunkElm {
-	Pos pos;
-	Chunk* chunk;
+    Pos pos;
+    Chunk* chunk;
 }
+
 
 struct Region {
 	Chunk*[32 * 32] chunks;
