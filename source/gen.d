@@ -195,6 +195,7 @@ int delegate(int, int) drawNoise(alias check = (int x, int z) => true, alias get
 
 enum heightLim = 16; //max height of land 
 enum heightHalf = 8; //water height
+enum sandHeight = 6;
 enum bottomH = heightLim * 4; //height of bottom
 enum caveHeight = 8; //cave air height
 enum caveLim = bottomH / 4;
@@ -302,6 +303,11 @@ void genForest(Setter set, ref Random rng, int radius) {
 				foreach (i; height .. heightHalf) {
 					set[x, i, z] = Blocks.water;
 				}
+				if(height < sandHeight){
+					foreach(i;0..height){
+						set[x,i,z] = Blocks.sand;
+					}
+				}
 			}
 			else {
 				set[x, height - 1, z] = Blocks.grass;
@@ -343,7 +349,7 @@ void genForest(Setter set, ref Random rng, int radius) {
 						block = Blocks.clay;
 					}
 					else {
-						block = Blocks.sand;
+						goto end;
 					}
 				}
 				foreach (ax; x - width .. x + width) {
@@ -389,6 +395,8 @@ void genForest(Setter set, ref Random rng, int radius) {
 						}
 					}
 				}
+				
+				end:
 
 				set = old;
 			}

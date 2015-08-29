@@ -271,7 +271,7 @@ class Level {
 					pos.x, pos.z, c * 100 / list.length);
 				stdout.flush;
 			}
-			tileTickWater(this, *chunkElm.chunk, pos.x, pos.z);
+			calutateWater(this, *chunkElm.chunk, pos.x, pos.z);
 			calcBlockLight(this, *chunkElm.chunk, pos.x, pos.z);
 			calcSkyLight1(this, *chunkElm.chunk);
 			calcSkyLight2(this, *chunkElm.chunk, pos.x, pos.z);
@@ -554,27 +554,70 @@ void calcSkyLight2(Level lev, ref Chunk chunk, int offx, int offz) {
 	}
 }
 
-void tileTickWater(Level lev, ref Chunk chunk, int offx, int offz) {
-	void tileWater(int x, int y, int z) {
-
-		if (lev.getBlockID(x, y, z) == Blocks.water.id) {
-			foreach (xI; TypeTuple!(-1, 1)) {
-				foreach (zI; TypeTuple!(-1, 1)) {
-					if (!lev.exists(x + xI, y, z + zI) || lev.getBlockID(x + xI, y,
-							z + zI) == 0) {
-						lev.setBlockID(x, y, z, Blocks.flowing_water.id);
-						lev.addTileTick(x, y, z);
-						return;
-					}
-				}
+void calutateWater(Level lev, ref Chunk chunk, int offx, int offz) {
+	ubyte id;
+	ubyte inc = 1;
+	ubyte countMax = 8;
+	
+	void tryflood()(int x,int y,int z,ubyte count){
+		assert(count > 0);
+		if(!lev.exists(x,y,z)){
+			return;
+		}
+		if(lev.getBlockID(x,y,z) != Blocks.air.id && !(lev.getBlockID(x,y,z) == id && lev.getMeta(x,y,z) > count)){
+			return;
+		}
+		flood(x,y,z,count);
+	}
+	
+	void flood(int x,int y,int z,ubyte count){
+		if(count >= countMax){
+			return;
+		}
+		
+		lev.setBlockID(x,y,z,id);
+		lev.setMeta(x,y,z,count);
+		
+		if(y > 0 && lev.getBlockID(x,y-1,z) == id && lev.getMeta(x,y-1,z) > 0){
+			return;
+		}
+		if(y > 0 && lev.getBlockID(x,y-1,z) == Blocks.air.id){
+			y-= 1;
+			while(y > 0 && lev.getBlockID(x,y,z) == Blocks.air.id){
+				lev.setBlockID(x,y,z,id);
+				lev.setMeta(x,y,z,cast(ubyte)(count + 8));
+				y--;
 			}
+			if(y == 0 || lev.getBlockID(x,y,z) == id){
+				return;
+			}
+			y+=1;
+			assert(lev.getBlockID(x,y,z) == id);
+			count = 0;
+		}
+		tryflood(x+1,y,z,cast(ubyte)(count+inc));
+		tryflood(x-1,y,z,cast(ubyte)(count+inc));
+		tryflood(x,y,z+1,cast(ubyte)(count+inc));
+		tryflood(x,y,z-1,cast(ubyte)(count+inc));
+		
+	}
+	void calcWater(int x, int y, int z) {
+		if (lev.getBlockID(x, y, z) == Blocks.water.id && lev.getMeta(x,y,z) == 0) {
+			id = Blocks.water.id;
+			inc = 1;
+			flood(x,y,z,0);
+		}
+		if (lev.getBlockID(x, y, z) == Blocks.lava.id && lev.getMeta(x,y,z) == 0) {
+			id = Blocks.lava.id;
+			inc = 2;
+			flood(x,y,z,0);
 		}
 	}
 
 	foreach (y; 0 .. 256) {
 		foreach (cz; 0 .. 16) {
 			foreach (cx; 0 .. 16) {
-				tileWater(cx + offx * 16, y, cz + offz * 16);
+				calcWater(cx + offx * 16, y, cz + offz * 16);
 			}
 		}
 	}
