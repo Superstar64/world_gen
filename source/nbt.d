@@ -41,65 +41,69 @@ void writeNBTFile(string fileName, const NBTRoot root, int type = 0) {
 
 	ubyte[] buf;
 	ubyte[] buf2;
-	writeNBTBuffer(buf,buf2, root, type);
+	writeNBTBuffer(buf, buf2, root, type);
 	std.file.write(fileName, buf);
 }
+
 //overrrides buffers
-void writeNBTBuffer(ref ubyte[] outbuf,ref ubyte[] otherbuf, const NBTRoot root, int type = 0) {
-	void writeTo(ref ubyte[] buffer){
+void writeNBTBuffer(ref ubyte[] outbuf, ref ubyte[] otherbuf, const NBTRoot root, int type = 0) {
+	void writeTo(ref ubyte[] buffer) {
 		buffer.length = 0;
 		(cast(byte) 10).writeBasic(buffer);
 		root.name.writeBasicArray!short(buffer);
 		root.tag.write(buffer);
 	}
-	
+
 	import etc.c.zlib;
-	
+
 	if (type == 0) {
 		writeTo(outbuf);
 	}
 	else if (type == 1 || type == 2) {
 		writeTo(otherbuf);
-		outbuf.length = outbuf.capacity;//ok right?
-		if(outbuf.length == 0){
+		outbuf.length = outbuf.capacity; //ok right?
+		if (outbuf.length == 0) {
 			outbuf.length = 4096;
 		}
 		z_stream stream;
-		auto bad = deflateInit2(&stream,9,Z_DEFLATED,type == 1 ? 15 : 15 + 16,9,Z_DEFAULT_STRATEGY);
-		if(bad != Z_OK){
+		auto bad = deflateInit2(&stream, 9, Z_DEFLATED, type == 1 ? 15 : 15 + 16,
+			9, Z_DEFAULT_STRATEGY);
+		if (bad != Z_OK) {
 			throw new NBTException("Bad zlib");
 		}
-		
+
 		stream.next_in = otherbuf.ptr;
-		stream.avail_in = cast(uint)otherbuf.length;
+		stream.avail_in = cast(uint) otherbuf.length;
 		stream.next_out = outbuf.ptr;
-		stream.avail_out = cast(uint)outbuf.length;
-		void realloc(){
+		stream.avail_out = cast(uint) outbuf.length;
+		void realloc() {
 			size_t end = outbuf.length;
 			outbuf.length = outbuf.length * 2;
 			outbuf.length = outbuf.capacity; // ok?
 			stream.next_out = &outbuf[end];
 			stream.avail_out = cast(uint)(outbuf.length - end);
 		}
-		
-		while(true){
-			auto result = deflate(&stream,Z_NO_FLUSH);
-			if(stream.avail_in == 0){
-				if(stream.avail_out == 0){
+
+		while (true) {
+			auto result = deflate(&stream, Z_NO_FLUSH);
+			if (stream.avail_in == 0) {
+				if (stream.avail_out == 0) {
 					realloc();
 				}
-				while(true){
-					result = deflate(&stream,Z_FINISH);
-					if(result != Z_STREAM_END){
+				while (true) {
+					result = deflate(&stream, Z_FINISH);
+					if (result != Z_STREAM_END) {
 						realloc();
 						continue;
 					}
 					break;
 				}
 				break;
-			}else if(stream.avail_out == 0){
+			}
+			else if (stream.avail_out == 0) {
 				realloc();
-			}else{
+			}
+			else {
 				assert(0);
 			}
 		}

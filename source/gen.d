@@ -275,7 +275,6 @@ void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 }
 
 void genForest(Setter set, ref Random rng, int radius) {
-
 	set = set.from(transformOff(-radius, 0, -radius));
 	auto x2 = radius * 2;
 	auto z2 = radius * 2;

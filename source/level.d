@@ -35,7 +35,7 @@ private struct Chunk {
 	Tag_Compound[] entites;
 	LevelPos[] tileTicks;
 
-	ubyte[] save(int cx, int cz,ref ubyte[] buffer1,ref ubyte[] buffer2) {
+	ubyte[] save(int cx, int cz, ref ubyte[] buffer1, ref ubyte[] buffer2) {
 		NBTRoot root;
 		{
 			Tag_Compound level;
@@ -79,7 +79,7 @@ private struct Chunk {
 			}
 			root.tag["Level"] = level;
 		}
-		writeNBTBuffer(buffer1,buffer2, root, 1);
+		writeNBTBuffer(buffer1, buffer2, root, 1);
 		return buffer1;
 	}
 
@@ -424,7 +424,7 @@ void save(Level lev, string regionPath, bool verbose) {
 						chunkx, chunky, pos.x, pos.z, percent * 100 / regions.length);
 					stdout.flush();
 				}
-				auto data = chunk.save(chunkx, chunky,nbtbuf1,nbtbuf2);
+				auto data = chunk.save(chunkx, chunky, nbtbuf1, nbtbuf2);
 				ubyte[int.sizeof] store;
 				*(cast(int*) store.ptr) = cast(int)(data.length + 1);
 				reverse(store[]);
