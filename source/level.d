@@ -23,25 +23,19 @@ private struct Pos {
 	int z;
 }
 
-private struct ChunkInteral {
-	byte[16 * 16 * 16] ids;
-	byte[16 * 16 * 16 / 2] data;
-	byte[16 * 16 * 16 / 2] bLight;
-	byte[16 * 16 * 16 / 2] sLight;
-	bool init;
-	alias init this;
-}
-
 private byte[256] nullBiomes;
 
 private struct Chunk {
-	ChunkInteral[16] parts;
+	byte[16 * 16 * 16][16] ids;
+	byte[16 * 16 * 16 / 2][16] meta;
+	byte[16 * 16 * 16 / 2][16] bLight;
+	byte[16 * 16 * 16 / 2][16] sLight;
+	bool[16] init;
 	int[16 * 16] heightMap;
 	Tag_Compound[] entites;
 	LevelPos[] tileTicks;
 
-	ubyte[] save(int cx, int cz) {
-		ubyte[] buffer;
+	ubyte[] save(int cx, int cz,ref ubyte[] buffer1,ref ubyte[] buffer2) {
 		NBTRoot root;
 		{
 			Tag_Compound level;
@@ -56,14 +50,14 @@ private struct Chunk {
 				level["Biomes"] = Tag_Byte_Array(nullBiomes);
 				level["HeightMap"] = Tag_Int_Array(heightMap[]);
 				Tag_Compound[] sections;
-				foreach (c, ref sec; parts) {
+				foreach (c, sec; init) {
 					if (sec) {
 						Tag_Compound section;
 						section["Y"] = Tag_Byte(cast(byte) c);
-						section["Blocks"] = Tag_Byte_Array(sec.ids);
-						section["Data"] = Tag_Byte_Array(sec.data);
-						section["BlockLight"] = Tag_Byte_Array(sec.bLight);
-						section["SkyLight"] = Tag_Byte_Array(sec.sLight);
+						section["Blocks"] = Tag_Byte_Array(ids[c]);
+						section["Data"] = Tag_Byte_Array(meta[c]);
+						section["BlockLight"] = Tag_Byte_Array(bLight[c]);
+						section["SkyLight"] = Tag_Byte_Array(sLight[c]);
 						sections ~= section;
 					}
 				}
@@ -85,8 +79,8 @@ private struct Chunk {
 			}
 			root.tag["Level"] = level;
 		}
-		writeNBTBuffer(buffer, root, 1);
-		return buffer;
+		writeNBTBuffer(buffer1,buffer2, root, 1);
+		return buffer1;
 	}
 
 	auto getOff(uint x, uint y, uint z) {
@@ -98,10 +92,10 @@ private struct Chunk {
 		assert(x < 16);
 		assert(z < 16);
 		size_t sec = y / 16;
-		if (!parts[sec]) {
+		if (!init[sec]) {
 			return 0;
 		}
-		return parts[sec].ids[getOff(x, y, z)];
+		return ids[sec][getOff(x, y, z)];
 	}
 
 	ubyte getMeta(uint x, uint y, uint z) {
@@ -109,10 +103,10 @@ private struct Chunk {
 		assert(x < 16);
 		assert(z < 16);
 		size_t sec = y / 16;
-		if (!parts[sec]) {
+		if (!init[sec]) {
 			return 0;
 		}
-		auto off = parts[sec].data[getOff(x, y, z) / 2];
+		auto off = meta[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			return off & 0xf;
 		}
@@ -126,10 +120,10 @@ private struct Chunk {
 		assert(x < 16);
 		assert(z < 16);
 		size_t sec = y / 16;
-		if (!parts[sec]) {
+		if (!init[sec]) {
 			return 0;
 		}
-		auto off = parts[sec].bLight[getOff(x, y, z) / 2];
+		auto off = bLight[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			return off & 0xf;
 		}
@@ -143,10 +137,10 @@ private struct Chunk {
 		assert(x < 16);
 		assert(z < 16);
 		size_t sec = y / 16;
-		if (!parts[sec]) {
+		if (!init[sec]) {
 			return 0;
 		}
-		auto off = parts[sec].sLight[getOff(x, y, z) / 2];
+		auto off = sLight[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			return off & 0xf;
 		}
@@ -160,10 +154,10 @@ private struct Chunk {
 		assert(x < 16);
 		assert(z < 16);
 		size_t sec = y / 16;
-		if (!parts[sec]) {
-			parts[sec] = true;
+		if (!init[sec]) {
+			init[sec] = true;
 		}
-		parts[sec].ids[getOff(x, y, z)] = id;
+		ids[sec][getOff(x, y, z)] = id;
 	}
 
 	void setMeta(uint x, uint y, uint z, ubyte data) {
@@ -172,15 +166,15 @@ private struct Chunk {
 		assert(z < 16);
 		assert(data < 16);
 		size_t sec = y / 16;
-		if (!parts[sec]) {
-			parts[sec] = true;
+		if (!init[sec]) {
+			init[sec] = true;
 		}
-		auto off = parts[sec].data[getOff(x, y, z) / 2];
+		auto off = meta[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
-			parts[sec].data[getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
+			meta[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
 		}
 		else {
-			parts[sec].data[getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
+			meta[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
 
@@ -190,15 +184,15 @@ private struct Chunk {
 		assert(z < 16);
 		assert(data < 16);
 		size_t sec = y / 16;
-		if (!parts[sec]) {
-			parts[sec] = true;
+		if (!init[sec]) {
+			init[sec] = true;
 		}
-		auto off = parts[sec].bLight[getOff(x, y, z) / 2];
+		auto off = bLight[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
-			parts[sec].bLight[getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
+			bLight[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
 		}
 		else {
-			parts[sec].bLight[getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
+			bLight[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
 
@@ -208,15 +202,15 @@ private struct Chunk {
 		assert(z < 16);
 		assert(data < 16);
 		size_t sec = y / 16;
-		if (!parts[sec]) {
-			parts[sec] = true;
+		if (!init[sec]) {
+			init[sec] = true;
 		}
-		auto off = parts[sec].sLight[getOff(x, y, z) / 2];
+		auto off = sLight[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
-			parts[sec].sLight[getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
+			sLight[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
 		}
 		else {
-			parts[sec].sLight[getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
+			sLight[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
 
@@ -226,7 +220,7 @@ private struct Chunk {
 
 	bool ysection(uint y) {
 		assert(y < 256);
-		return parts[y / 16];
+		return init[y / 16];
 	}
 }
 
@@ -277,10 +271,10 @@ class Level {
 					pos.x, pos.z, c * 100 / list.length);
 				stdout.flush;
 			}
+			tileTickWater(this, *chunkElm.chunk, pos.x, pos.z);
 			calcBlockLight(this, *chunkElm.chunk, pos.x, pos.z);
 			calcSkyLight1(this, *chunkElm.chunk);
 			calcSkyLight2(this, *chunkElm.chunk, pos.x, pos.z);
-			tileTickWater(this, *chunkElm.chunk, pos.x, pos.z);
 		}
 		if (print) {
 			writeln();
@@ -416,6 +410,8 @@ void save(Level lev, string regionPath, bool verbose) {
 		regions[regPos].chunkAt(pos) = &chunk;
 	}
 	size_t percent;
+	ubyte[] nbtbuf1;
+	ubyte[] nbtbuf2;
 	foreach (pos, region; regions) {
 		ubyte[] file = new ubyte[8192];
 		uint offsetCount = 2;
@@ -428,7 +424,7 @@ void save(Level lev, string regionPath, bool verbose) {
 						chunkx, chunky, pos.x, pos.z, percent * 100 / regions.length);
 					stdout.flush();
 				}
-				auto data = chunk.save(chunkx, chunky);
+				auto data = chunk.save(chunkx, chunky,nbtbuf1,nbtbuf2);
 				ubyte[int.sizeof] store;
 				*(cast(int*) store.ptr) = cast(int)(data.length + 1);
 				reverse(store[]);
