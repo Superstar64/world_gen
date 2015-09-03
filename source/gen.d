@@ -312,7 +312,7 @@ void genForest(Setter set, ref Random rng, int radius) {
 			else {
 				set[x, height - 1, z] = Blocks.grass;
 				if (uniform(0, 128, rng) == 0) {
-					genTree(set.from(transformOff(x, height, z)));
+					genTree(set.from(transformOff(x, height, z)),rng);
 				}
 			}
 			//tall grass,flowers, clay
@@ -384,7 +384,9 @@ void genForest(Setter set, ref Random rng, int radius) {
 							}
 							else {
 								if (above) {
-									set[ax, height2, az] = block;
+									if(uniform(0,16,rng)){
+										set[ax, height2, az] = block;
+									}
 								}
 								else {
 									foreach (i2; 0 .. height2) {
@@ -415,6 +417,7 @@ void genForest(Setter set, ref Random rng, int radius) {
 	foreach (i; 0 .. animals) {
 		int x;
 		int z;
+		recalc:
 		do {
 			x = uniform(0, x2, rng);
 			z = uniform(0, z2, rng);
@@ -423,6 +426,9 @@ void genForest(Setter set, ref Random rng, int radius) {
 
 		auto y = getHeight(x, z);
 		if (y < heightHalf) {
+			if(uniform(0,4)){
+				goto recalc;
+			}
 			y = heightHalf;
 		}
 		set.setEntity(animalList[uniform(0, animalList.length, rng)], LevelPos(x, y,
@@ -430,14 +436,24 @@ void genForest(Setter set, ref Random rng, int radius) {
 	}
 }
 
-auto genTree(Setter set) {
+auto genTree(Setter set,ref Random rng) {
+	auto off = uniform(0,2,rng);
 	foreach (x; -2 .. 3) {
 		foreach (z; -2 .. 3) {
 			if (x == 0 && z == 0) {
 				continue;
 			}
-			set[x, 3, z] = Blocks.leaves;
-			set[x, 4, z] = Blocks.leaves;
+			if(abs(x) == 2 && abs(z) == 2){
+				if(uniform(0,16,rng)){
+					set[x, off + 2, z] = Blocks.leaves;
+				}
+				if(uniform(0,16,rng)){
+					set[x, off + 3, z] = Blocks.leaves;
+				}
+			}else{
+				set[x, off + 2, z] = Blocks.leaves;
+				set[x, off + 3, z] = Blocks.leaves;
+			}
 		}
 	}
 	foreach (x; -1 .. 2) {
@@ -445,11 +461,17 @@ auto genTree(Setter set) {
 			if (x == 0 && z == 0) {
 				continue;
 			}
-			set[x, 5, z] = Blocks.leaves;
+			set[x, off + 4, z] = Blocks.leaves;
 		}
 	}
-	foreach (y; 0 .. 6) {
+	foreach (y; 0 .. off + 5) {
 		set[0, y, 0] = Blocks.log;
 	}
-	set[0, 6, 0] = Blocks.leaves;
+	set[0, off + 5, 0] = Blocks.leaves;
+	if(uniform(0,2,rng)){
+		set[-1, off + 5, 0] = Blocks.leaves;
+		set[1, off + 5, 0] = Blocks.leaves;
+		set[0, off + 5, -1] = Blocks.leaves;
+		set[0, off + 5, 1] = Blocks.leaves;
+	}
 }
