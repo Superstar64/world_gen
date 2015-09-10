@@ -66,8 +66,11 @@ void main(string[] args) {
 		seedSet = true;
 	}
 
-	if (getopt(args, "v|verbose", &verbose, "w|world", &world, "s|seed",
-			&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck).helpWanted) {
+	bool help;
+	getopt(args, "v|verbose", &verbose, "w|world", &world, "s|seed",
+		&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck, " h|help",
+		&help);
+	if (help) {
 		writeln(`world_gen
 -v --verbose=  be loud
 -w --world=    set world name
