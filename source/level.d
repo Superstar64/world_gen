@@ -7,7 +7,8 @@ import std.typetuple;
 import std.conv;
 import std.stdio : writef, writeln, stdout;
 import std.math;
-
+import std.mmfile;
+import core.memory;
 struct Block {
 	ubyte id;
 	ubyte meta;
@@ -231,16 +232,22 @@ private struct ChunkMeta {//data oriented programming
 }
 
 class Level {
-	private Chunk[Pos] chunks;
-	private ChunkMeta[Pos] chunkMetas;
+	private Chunk[] chunks;
+	private ChunkMeta[] chunkMetas;
+	private MmFile mmfile;
 	int size;
-	this(int levelSize){
+	this(int levelSize,string tempFile){
 		size = levelSize;
-		foreach(x;-chunkLen .. chunkLen){
-			foreach(z;-chunkLen  .. chunkLen){
-				chunks[Pos(x,z)] = Chunk();
-				chunkMetas[Pos(x,z)] = ChunkMeta();
-			}
+		auto chSize = chunkLen * chunkLen * 4;
+		if(tempFile is null){
+			chunks = new Chunk[chSize];
+			chunkMetas = new ChunkMeta[chSize];
+		}else{
+			mmfile = new MmFile(tempFile, MmFile.Mode.readWriteNew, chSize * Chunk.sizeof + chSize * ChunkMeta.sizeof ,null);
+			auto data = cast(ubyte[])mmfile[];
+			chunks = cast(Chunk[])(data[0..chSize * Chunk.sizeof]);
+			chunkMetas = cast(ChunkMeta[]) (data[chSize * Chunk.sizeof .. $]);
+			GC.addRange(chunkMetas.ptr,chunkMetas.length * ChunkMeta.sizeof , typeid(ChunkMeta));
 		}
 	}
 
@@ -302,13 +309,17 @@ private:
 	int chunkLen(){
 		return (size + (16 - 1 )) /16;
 	}
-		
+	
+	size_t off(Pos p){
+		return p.x + chunkLen + 2 * chunkLen * ( p.z + chunkLen);
+	}
+	
 	ref Chunk getChunk(Pos p){
-		return chunks[p];
+		return chunks[off(p)];
 	}
 	
 	ref ChunkMeta getChunkMeta(Pos p){
-		return chunkMetas[p];
+		return chunkMetas[off(p)];
 	}
 	int opApply(int delegate(size_t,Pos,ref Chunk) fn){
 		int ret;
@@ -358,8 +369,8 @@ private:
 
 	ref int height(int x, int z) {
 		auto pos = Pos(x >> 4, z >> 4);
-		assert(pos in chunks);
-		return chunks[pos].getHeight(x & 15, z & 15);
+		assert(exists2(x,z));
+		return getChunk(pos).getHeight(x & 15, z & 15);
 	}
 
 	bool exists2(int x, int z) {

@@ -49,6 +49,7 @@ auto LevelDat(string worldName) {
 void main(string[] args) {
 	bool verbose = true;
 	string world = "world";
+	string tempFile = "world_gen.temp";
 	uint seed;
 	uint size = 640;
 	bool seedSet;
@@ -68,8 +69,8 @@ void main(string[] args) {
 
 	bool help;
 	getopt(args, "v|verbose", &verbose, "w|world", &world, "s|seed",
-		&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck, " h|help",
-		&help);
+		&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck, "h|help",
+		&help, "t|temp", &tempFile);
 	if (help) {
 		writeln(`world_gen
 -v --verbose=  be loud
@@ -78,6 +79,7 @@ void main(string[] args) {
 -z --size=     world size
 -r --radius=   island radius(default = 250)
 -c --chuck=    island fequency(recommend radius*2 + 12)
+-t --temp=     temporary file name (empty for none)
 `);
 		return;
 	}
@@ -115,7 +117,7 @@ void main(string[] args) {
 	else {
 		rng = rndGen();
 	}
-	auto lev = genLevel(rng, size, verbose, radius, chuck);
+	auto lev = genLevel(rng, size, verbose, radius, chuck, tempFile);
 	lev.calculateLightandWater(verbose);
 	lev.save(region, verbose);
 }

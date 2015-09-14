@@ -7,8 +7,8 @@ import std.math;
 import std.typetuple;
 import noise;
 
-Level genLevel(ref Random rng, int size, bool verbose, int radius, int chunk) {
-	Level lev = new Level(size);
+Level genLevel(ref Random rng, int size, bool verbose, int radius, int chunk,string tempFile) {
+	Level lev = new Level(size,tempFile);
 	auto set = Setter(levelSet(lev), levelGet(lev), levelSetEntity(lev));
 	generate(set, rng, size, verbose, radius, chunk);
 	fill(lev, Blocks.air, LevelPos(-size, 255, -size), LevelPos(size, 256, size)); //todo light calculating glitches out when block at sky limit

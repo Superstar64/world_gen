@@ -5,3 +5,4 @@ __dummy.html
 *.obj
 world
 world_gen
+world_gen.temp
