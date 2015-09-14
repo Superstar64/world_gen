@@ -8,9 +8,8 @@ import std.typetuple;
 import noise;
 
 Level genLevel(ref Random rng, int size, bool verbose, int radius, int chunk) {
-	Level lev = new Level();
-	auto set = Setter(levelSet(lev, size), levelGet(lev, size), levelSetEntity(lev,
-		size));
+	Level lev = new Level(size);
+	auto set = Setter(levelSet(lev), levelGet(lev), levelSetEntity(lev));
 	generate(set, rng, size, verbose, radius, chunk);
 	fill(lev, Blocks.air, LevelPos(-size, 255, -size), LevelPos(size, 256, size)); //todo light calculating glitches out when block at sky limit
 	return lev;
@@ -70,29 +69,20 @@ void fill(Setter set, Block block, int x, int y, int z) {
 	fill(set, block, LevelPos(x, y, z));
 }
 
-auto levelSet(Level lev, int size) {
+auto levelSet(Level lev) {
 	return (Block b, LevelPos pos) {
-		if (pos.x < size && pos.x > -size && pos.z < size && pos.z > -size && pos.y > 0
-				&& pos.y < 256) {
 			lev[pos] = b;
-		}
 	};
 }
 
-auto levelGet(Level lev, int size) {
+auto levelGet(Level lev) {
 	return (LevelPos pos) {
-		if (pos.x < size && pos.x > -size && pos.z < size && pos.z > -size && pos.y > 0
-				&& pos.y < 256) {
 			return lev[pos];
-		}
-		return Blocks.air;
 	};
 }
 
-auto levelSetEntity(Level lev, int size) {
+auto levelSetEntity(Level lev) {
 	return (const Tag_Compound b, LevelPos pos) {
-		if (pos.x < size && pos.x > -size && pos.z < size && pos.z > -size && pos.y > 0
-				&& pos.y < 256) {
 			Tag_Compound en;
 			foreach (k, v;
 			b) { //.dup didn't work
@@ -100,7 +90,6 @@ auto levelSetEntity(Level lev, int size) {
 			}
 			en["Pos"] = Tag_List([Tag_Double(pos.x), Tag_Double(pos.y), Tag_Double(pos.z)]);
 			lev.setEntity(en, pos);
-		}
 	};
 }
 
