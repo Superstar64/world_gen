@@ -66,20 +66,28 @@ void main(string[] args) {
 		}
 		seedSet = true;
 	}
-
+	
+	void setTemp(string, string val){
+		if(val == "-"){
+			tempFile = null;
+		}else{
+			tempFile = val;
+		}
+	}
+	
 	bool help;
 	getopt(args, "v|verbose", &verbose, "w|world", &world, "s|seed",
 		&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck, "h|help",
-		&help, "t|temp", &tempFile);
+		&help, "t|temp", &setTemp);
 	if (help) {
 		writeln(`world_gen
--v --verbose=  be loud
--w --world=    set world name
+-v --verbose=  be loud(default = true)
+-w --world=    set world name(default = world)
 -s --seed=     world seed
--z --size=     world size
+-z --size=     world size(default = 640)
 -r --radius=   island radius(default = 250)
 -c --chuck=    island fequency(recommend radius*2 + 12)
--t --temp=     temporary file name (empty for none)
+-t --temp=     temporary file name (- for none)
 `);
 		return;
 	}
