@@ -7,8 +7,8 @@ import std.math;
 import std.typetuple;
 import noise;
 
-Level genLevel(ref Random rng, int size, bool verbose, int radius, int chunk,string tempFile) {
-	Level lev = new Level(size,tempFile);
+Level genLevel(ref Random rng, int size, bool verbose, int radius, int chunk, string tempFile) {
+	Level lev = new Level(size, tempFile);
 	auto set = Setter(levelSet(lev), levelGet(lev), levelSetEntity(lev));
 	generate(set, rng, size, verbose, radius, chunk);
 	fill(lev, Blocks.air, LevelPos(-size, 255, -size), LevelPos(size, 256, size)); //todo light calculating glitches out when block at sky limit
@@ -70,21 +70,15 @@ void fill(Setter set, Block block, int x, int y, int z) {
 }
 
 auto levelSet(Level lev) {
-	return (Block b, LevelPos pos) {
-			lev[pos] = b;
-	};
+	return (Block b, LevelPos pos) { lev[pos] = b; };
 }
 
 auto levelGet(Level lev) {
-	return (LevelPos pos) {
-			return lev[pos];
-	};
+	return (LevelPos pos) { return lev[pos]; };
 }
 
 auto levelSetEntity(Level lev) {
-	return (const Tag_Compound b, LevelPos pos) {
-			lev.setEntity(b, pos);
-	};
+	return (const Tag_Compound b, LevelPos pos) { lev.setEntity(b, pos); };
 }
 
 alias Transformer = LevelPos delegate(LevelPos);
@@ -154,8 +148,7 @@ void setIfAir(ref Setter setter) {
 	setter = setter.from((LevelPos pos) {
 		if (org[pos] != Blocks.air) {
 			return LevelPos(0, -1, 0);
-		}
-		else {
+		} else {
 			return pos;
 		}
 	});
@@ -214,8 +207,7 @@ void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 							foreach (i; val .. val + caveHeight) {
 								if (i - layer > caveLim / 2 + caveHeight / 2) {
 									underset[x, i, z] = Blocks.lava;
-								}
-								else {
+								} else {
 									underset[x, i, z] = Blocks.air;
 								}
 							}
@@ -291,8 +283,7 @@ void genForest(Setter set, ref Random rng, int radius) {
 						set[x, i, z] = Blocks.sand;
 					}
 				}
-			}
-			else {
+			} else {
 				set[x, height - 1, z] = Blocks.grass;
 				if (uniform(0, 128, rng) == 0) {
 					genTree(set.from(transformOff(x, height, z)), rng);
@@ -313,25 +304,19 @@ void genForest(Setter set, ref Random rng, int radius) {
 					auto num = uniform(0, 256, rng);
 					if (num == 0) {
 						block = Blocks.melon_block;
-					}
-					else if (num < 2) {
+					} else if (num < 2) {
 						block = Blocks.pumpkin;
-					}
-					else if (num < 18) {
+					} else if (num < 18) {
 						block = Blocks.yellow_flower;
-					}
-					else if (num < 34) {
+					} else if (num < 34) {
 						block = Blocks.red_flower;
-					}
-					else if (num < 54) {
+					} else if (num < 54) {
 						block = Blocks.reeds;
 					}
-				}
-				else {
+				} else {
 					if (uniform(0, 8, rng) == 0) {
 						block = Blocks.clay;
-					}
-					else {
+					} else {
 						goto end;
 					}
 				}
@@ -343,8 +328,7 @@ void genForest(Setter set, ref Random rng, int radius) {
 								if (height2 < heightHalf) {
 									continue;
 								}
-							}
-							else {
+							} else {
 								if (height2 >= heightHalf) {
 									continue;
 								}
@@ -364,14 +348,12 @@ void genForest(Setter set, ref Random rng, int radius) {
 										set[ax, i, az] = block;
 									}
 								}
-							}
-							else {
+							} else {
 								if (above) {
 									if (uniform(0, 16, rng)) {
 										set[ax, height2, az] = block;
 									}
-								}
-								else {
+								} else {
 									foreach (i2; 0 .. height2) {
 										set[ax, i2, az] = block;
 									}
@@ -400,8 +382,7 @@ void genForest(Setter set, ref Random rng, int radius) {
 	foreach (i; 0 .. animals) {
 		int x;
 		int z;
-	recalc:
-		do {
+		recalc: do {
 			x = uniform(0, x2, rng);
 			z = uniform(0, z2, rng);
 		}
@@ -433,8 +414,7 @@ auto genTree(Setter set, ref Random rng) {
 				if (uniform(0, 16, rng)) {
 					set[x, off + 3, z] = Blocks.leaves;
 				}
-			}
-			else {
+			} else {
 				set[x, off + 2, z] = Blocks.leaves;
 				set[x, off + 3, z] = Blocks.leaves;
 			}

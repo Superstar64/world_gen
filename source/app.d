@@ -66,19 +66,19 @@ void main(string[] args) {
 		}
 		seedSet = true;
 	}
-	
-	void setTemp(string, string val){
-		if(val == "-"){
+
+	void setTemp(string, string val) {
+		if (val == "-") {
 			tempFile = null;
-		}else{
+		} else {
 			tempFile = val;
 		}
 	}
-	
+
 	bool help;
 	getopt(args, "v|verbose", &verbose, "w|world", &world, "s|seed",
-		&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck, "h|help",
-		&help, "t|temp", &setTemp);
+		&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck,
+		"h|help", &help, "t|temp", &setTemp);
 	if (help) {
 		writeln(`world_gen
 -v --verbose=  be loud(default = true)
@@ -121,8 +121,7 @@ void main(string[] args) {
 	Random rng;
 	if (seedSet) {
 		rng = Random(seed);
-	}
-	else {
+	} else {
 		rng = rndGen();
 	}
 	auto lev = genLevel(rng, size, verbose, radius, chuck, tempFile);

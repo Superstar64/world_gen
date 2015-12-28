@@ -9,6 +9,7 @@ import std.stdio : writef, writeln, stdout;
 import std.math;
 import std.mmfile;
 import core.memory;
+
 struct Block {
 	ubyte id;
 	ubyte meta;
@@ -35,8 +36,8 @@ private struct Chunk {
 	byte[16 * 16 * 16 / 2][16] sLight;
 	int[16 * 16] heightMap;
 
-	ubyte[] save(int cx, int cz,ref ChunkMeta chmeta ,ref ubyte[] buffer1, ref ubyte[] buffer2) {
-		with(chmeta){
+	ubyte[] save(int cx, int cz, ref ChunkMeta chmeta, ref ubyte[] buffer1, ref ubyte[] buffer2) {
+		with (chmeta) {
 			NBTRoot root;
 			{
 				Tag_Compound level;
@@ -67,8 +68,8 @@ private struct Chunk {
 					Tag_Compound[] tileEntities;
 					foreach (t; tileTicks) {
 						Tag_Compound tile;
-						tile["i"] = Tag_String(BlockIDToName[getBlockID(t.x & 0xf, t.y,
-							t.z & 0xf)].dup);
+						tile["i"] = Tag_String(BlockIDToName[getBlockID(t.x & 0xf,
+							t.y, t.z & 0xf)].dup);
 						tile["t"] = Tag_Int(0);
 						tile["p"] = Tag_Int(0);
 						tile["x"] = Tag_Int(t.x);
@@ -111,8 +112,7 @@ private struct Chunk {
 		auto off = meta[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			return off & 0xf;
-		}
-		else {
+		} else {
 			return (off & 0xf0) >> 4;
 		}
 	}
@@ -128,8 +128,7 @@ private struct Chunk {
 		auto off = bLight[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			return off & 0xf;
-		}
-		else {
+		} else {
 			return (off & 0xf0) >> 4;
 		}
 	}
@@ -145,8 +144,7 @@ private struct Chunk {
 		auto off = sLight[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			return off & 0xf;
-		}
-		else {
+		} else {
 			return (off & 0xf0) >> 4;
 		}
 	}
@@ -174,8 +172,7 @@ private struct Chunk {
 		auto off = meta[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			meta[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
-		}
-		else {
+		} else {
 			meta[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
@@ -192,8 +189,7 @@ private struct Chunk {
 		auto off = bLight[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			bLight[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
-		}
-		else {
+		} else {
 			bLight[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
@@ -210,8 +206,7 @@ private struct Chunk {
 		auto off = sLight[sec][getOff(x, y, z) / 2];
 		if (x % 2 == 0) {
 			sLight[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf0) | data);
-		}
-		else {
+		} else {
 			sLight[sec][getOff(x, y, z) / 2] = cast(byte)((off & 0xf) | (data << 4));
 		}
 	}
@@ -226,7 +221,7 @@ private struct Chunk {
 	}
 }
 
-private struct ChunkMeta {//data oriented programming
+private struct ChunkMeta { //data oriented programming
 	Tag_Compound[] entites;
 	LevelPos[] tileTicks;
 }
@@ -236,18 +231,19 @@ class Level {
 	private ChunkMeta[] chunkMetas;
 	private MmFile mmfile;
 	int size;
-	this(int levelSize,string tempFile){
+	this(int levelSize, string tempFile) {
 		size = levelSize;
 		auto chSize = chunkLen * chunkLen * 4;
-		if(tempFile is null){
+		if (tempFile is null) {
 			chunks = new Chunk[chSize];
 			chunkMetas = new ChunkMeta[chSize];
-		}else{
-			mmfile = new MmFile(tempFile, MmFile.Mode.readWriteNew, chSize * Chunk.sizeof + chSize * ChunkMeta.sizeof ,null);
-			auto data = cast(ubyte[])mmfile[];
-			chunks = cast(Chunk[])(data[0..chSize * Chunk.sizeof]);
-			chunkMetas = cast(ChunkMeta[]) (data[chSize * Chunk.sizeof .. $]);
-			GC.addRange(chunkMetas.ptr,chunkMetas.length * ChunkMeta.sizeof , typeid(ChunkMeta));
+		} else {
+			mmfile = new MmFile(tempFile, MmFile.Mode.readWriteNew,
+				chSize * Chunk.sizeof + chSize * ChunkMeta.sizeof, null);
+			auto data = cast(ubyte[]) mmfile[];
+			chunks = cast(Chunk[])(data[0 .. chSize * Chunk.sizeof]);
+			chunkMetas = cast(ChunkMeta[])(data[chSize * Chunk.sizeof .. $]);
+			GC.addRange(chunkMetas.ptr, chunkMetas.length * ChunkMeta.sizeof, typeid(ChunkMeta));
 		}
 	}
 
@@ -271,11 +267,11 @@ class Level {
 
 	void setEntity(const Tag_Compound e, int x, int y, int z) {
 		auto pos = Pos(x >> 4, z >> 4);
-		if(!exists2(x,z)){
+		if (!exists2(x, z)) {
 			return;
 		}
 		Tag_Compound clone;
-		foreach(k,v;e){
+		foreach (k, v; e) {
 			clone[k] = v;
 		}
 		clone["Pos"] = Tag_List([Tag_Double(x), Tag_Double(y), Tag_Double(z)]);
@@ -285,7 +281,7 @@ class Level {
 	bool exists(int x, int y, int z) {
 		assert(y >= 0 && y < 256);
 		auto pos = Pos(x >> 4, z >> 4);
-		return exists2(x,z) && getChunk(pos).ysection(y);
+		return exists2(x, z) && getChunk(pos).ysection(y);
 	}
 
 	void setEntity(const Tag_Compound e, LevelPos pos) {
@@ -293,7 +289,7 @@ class Level {
 	}
 
 	void calculateLightandWater(bool print) {
-		foreach (c,pos, ref chunk; this) {
+		foreach (c, pos, ref chunk; this) {
 			if (print) {
 				writef("Calcutaing light and water for chunk(%#5s,%#5s) %s%%\r",
 					pos.x, pos.z, c * 100 / length);
@@ -310,30 +306,31 @@ class Level {
 	}
 
 private:
-		
-	int chunkLen(){
-		return (size + (16 - 1 )) /16;
+
+	int chunkLen() {
+		return (size + (16 - 1)) / 16;
 	}
-	
-	size_t off(Pos p){
-		return p.x + chunkLen + 2 * chunkLen * ( p.z + chunkLen);
+
+	size_t off(Pos p) {
+		return p.x + chunkLen + 2 * chunkLen * (p.z + chunkLen);
 	}
-	
-	ref Chunk getChunk(Pos p){
+
+	ref Chunk getChunk(Pos p) {
 		return chunks[off(p)];
 	}
-	
-	ref ChunkMeta getChunkMeta(Pos p){
+
+	ref ChunkMeta getChunkMeta(Pos p) {
 		return chunkMetas[off(p)];
 	}
-	int opApply(int delegate(size_t,Pos,ref Chunk) fn){
+
+	int opApply(int delegate(size_t, Pos, ref Chunk) fn) {
 		int ret;
 		size_t c;
-		foreach(x;-chunkLen .. chunkLen){
-			foreach(z;-chunkLen .. chunkLen){
-				auto pos = Pos(x,z);
-				ret = fn(c,pos,getChunk(pos));
-				if(ret){
+		foreach (x; -chunkLen .. chunkLen) {
+			foreach (z; -chunkLen .. chunkLen) {
+				auto pos = Pos(x, z);
+				ret = fn(c, pos, getChunk(pos));
+				if (ret) {
 					return ret;
 				}
 				c++;
@@ -341,15 +338,15 @@ private:
 		}
 		return ret;
 	}
-	
-	int opApply(int delegate(size_t,Pos,ref Chunk,ref ChunkMeta) fn){
+
+	int opApply(int delegate(size_t, Pos, ref Chunk, ref ChunkMeta) fn) {
 		int ret;
 		size_t c;
-		foreach(x;-chunkLen .. chunkLen){
-			foreach(z;-chunkLen .. chunkLen){
-				auto pos = Pos(x,z);
-				ret = fn(c,pos,getChunk(pos),getChunkMeta(pos));
-				if(ret){
+		foreach (x; -chunkLen .. chunkLen) {
+			foreach (z; -chunkLen .. chunkLen) {
+				auto pos = Pos(x, z);
+				ret = fn(c, pos, getChunk(pos), getChunkMeta(pos));
+				if (ret) {
 					return ret;
 				}
 				c++;
@@ -357,16 +354,16 @@ private:
 		}
 		return ret;
 	}
-	
-	auto length(){
+
+	auto length() {
 		auto ret = chunkLen * chunkLen * 4;
 		assert(chunks.length == ret);
 		return ret;
 	}
-	
+
 	void addTileTick(int x, int y, int z) {
 		auto pos = Pos(x >> 4, z >> 4);
-		if(!exists2(x,z)){
+		if (!exists2(x, z)) {
 			return;
 		}
 		getChunkMeta(pos).tileTicks ~= LevelPos(x, y, z);
@@ -374,12 +371,12 @@ private:
 
 	ref int height(int x, int z) {
 		auto pos = Pos(x >> 4, z >> 4);
-		assert(exists2(x,z));
+		assert(exists2(x, z));
 		return getChunk(pos).getHeight(x & 15, z & 15);
 	}
 
 	bool exists2(int x, int z) {
-		return abs(x) < size && abs(z) < size; 
+		return abs(x) < size && abs(z) < size;
 	}
 
 	ubyte getBlockID(int x, uint y, int z) {
@@ -429,7 +426,7 @@ private:
 	void setBlockID(int x, uint y, int z, ubyte id) {
 		assert(y < 256);
 		auto pos = Pos(x >> 4, z >> 4);
-		if(!exists2(x,z)){
+		if (!exists2(x, z)) {
 			return;
 		}
 		return getChunk(pos).setBlockID(x & 0xf, y, z & 0xf, id);
@@ -439,7 +436,7 @@ private:
 		assert(y < 256);
 		assert(data < 16);
 		auto pos = Pos(x >> 4, z >> 4);
-		if(!exists2(x,z)){
+		if (!exists2(x, z)) {
 			return;
 		}
 		return getChunk(pos).setMeta(x & 0xf, y, z & 0xf, data);
@@ -449,7 +446,7 @@ private:
 		assert(y < 256);
 		assert(data < 16);
 		auto pos = Pos(x >> 4, z >> 4);
-		if(!exists2(x,z)){
+		if (!exists2(x, z)) {
 			return;
 		}
 		return getChunk(pos).setBLight(x & 0xf, y, z & 0xf, data);
@@ -459,7 +456,7 @@ private:
 		assert(y < 256);
 		assert(data < 16);
 		auto pos = Pos(x >> 4, z >> 4);
-		if(!exists2(x,z)){
+		if (!exists2(x, z)) {
 			return;
 		}
 		return getChunk(pos).setSLight(x & 0xf, y, z & 0xf, data);
@@ -469,7 +466,7 @@ private:
 
 void save(Level lev, string regionPath, bool verbose) {
 	Region[Pos] regions;
-	foreach (c,pos, ref chunk,ref chunkMeta; lev) {
+	foreach (c, pos, ref chunk, ref chunkMeta; lev) {
 
 		auto regPos = pos;
 		regPos.x >>= 5;
@@ -495,7 +492,8 @@ void save(Level lev, string regionPath, bool verbose) {
 						chunkx, chunky, pos.x, pos.z, percent * 100 / regions.length);
 					stdout.flush();
 				}
-				auto data = chunk.save(chunkx, chunky,*region.chunkMetaAt(Pos(chunkx,chunky)), nbtbuf1, nbtbuf2);
+				auto data = chunk.save(chunkx, chunky,
+					*region.chunkMetaAt(Pos(chunkx, chunky)), nbtbuf1, nbtbuf2);
 				ubyte[int.sizeof] store;
 				*(cast(int*) store.ptr) = cast(int)(data.length + 1);
 				reverse(store[]);
@@ -542,11 +540,11 @@ struct Region {
 	auto ref chunkAt(Pos chunkPos) {
 		return chunks[(chunkPos.x & 31) + (chunkPos.z & 31) * 32];
 	}
-	
+
 	auto ref chunkMetaAt(Pos chunkPos) {
 		return chunkMetas[(chunkPos.x & 31) + (chunkPos.z & 31) * 32];
 	}
-	
+
 }
 
 void calcBlockLight(Level lev, ref Chunk chunk, int offx, int offz) {
@@ -710,8 +708,7 @@ void spread(alias lightGet, alias lightSet)(Level lev, ubyte light, int x, int y
 		}
 		if (lightGet(x, y, z) < light) {
 			lightSet(x, y, z, light);
-		}
-		else {
+		} else {
 			return;
 		}
 		assert(light >= lightGet(x, y, z));

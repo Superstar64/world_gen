@@ -58,8 +58,7 @@ void writeNBTBuffer(ref ubyte[] outbuf, ref ubyte[] otherbuf, const NBTRoot root
 
 	if (type == 0) {
 		writeTo(outbuf);
-	}
-	else if (type == 1 || type == 2) {
+	} else if (type == 1 || type == 2) {
 		writeTo(otherbuf);
 		outbuf.length = outbuf.capacity; //ok right?
 		if (outbuf.length == 0) {
@@ -99,19 +98,16 @@ void writeNBTBuffer(ref ubyte[] outbuf, ref ubyte[] otherbuf, const NBTRoot root
 					break;
 				}
 				break;
-			}
-			else if (stream.avail_out == 0) {
+			} else if (stream.avail_out == 0) {
 				realloc();
-			}
-			else {
+			} else {
 				assert(0);
 			}
 		}
 		outbuf.length = stream.total_out;
 		deflateEnd(&stream);
 		otherbuf.length = 0;
-	}
-	else {
+	} else {
 		assert(0);
 	}
 }
@@ -368,8 +364,7 @@ private auto readBasicArray(bool slice, T, IntType = int, F)(ref F file) {
 	static if (slice) {
 		result = cast(T[])(file[0 .. length * T.sizeof]);
 		static assert(hasAssignableElements!F);
-	}
-	else {
+	} else {
 		result = new T[length];
 		result[] = cast(T[])(file[0 .. length * T.sizeof]);
 	}
