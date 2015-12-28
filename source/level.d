@@ -269,12 +269,17 @@ class Level {
 		return b;
 	}
 
-	void setEntity(Tag_Compound e, int x, int y, int z) {
+	void setEntity(const Tag_Compound e, int x, int y, int z) {
 		auto pos = Pos(x >> 4, z >> 4);
 		if(!exists2(x,z)){
 			return;
 		}
-		getChunkMeta(pos).entites ~= e;
+		Tag_Compound clone;
+		foreach(k,v;e){
+			clone[k] = v;
+		}
+		clone["Pos"] = Tag_List([Tag_Double(x), Tag_Double(y), Tag_Double(z)]);
+		getChunkMeta(pos).entites ~= clone;
 	}
 
 	bool exists(int x, int y, int z) {
@@ -283,7 +288,7 @@ class Level {
 		return exists2(x,z) && getChunk(pos).ysection(y);
 	}
 
-	void setEntity(Tag_Compound e, LevelPos pos) {
+	void setEntity(const Tag_Compound e, LevelPos pos) {
 		setEntity(e, pos.x, pos.y, pos.z);
 	}
 
@@ -490,7 +495,7 @@ void save(Level lev, string regionPath, bool verbose) {
 						chunkx, chunky, pos.x, pos.z, percent * 100 / regions.length);
 					stdout.flush();
 				}
-				auto data = chunk.save(chunkx, chunky,*region.chunkMetaAt(pos), nbtbuf1, nbtbuf2);
+				auto data = chunk.save(chunkx, chunky,*region.chunkMetaAt(Pos(chunkx,chunky)), nbtbuf1, nbtbuf2);
 				ubyte[int.sizeof] store;
 				*(cast(int*) store.ptr) = cast(int)(data.length + 1);
 				reverse(store[]);

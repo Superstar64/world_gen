@@ -83,13 +83,7 @@ auto levelGet(Level lev) {
 
 auto levelSetEntity(Level lev) {
 	return (const Tag_Compound b, LevelPos pos) {
-			Tag_Compound en;
-			foreach (k, v;
-			b) { //.dup didn't work
-				en[k] = v;
-			}
-			en["Pos"] = Tag_List([Tag_Double(pos.x), Tag_Double(pos.y), Tag_Double(pos.z)]);
-			lev.setEntity(en, pos);
+			lev.setEntity(b, pos);
 	};
 }
 
