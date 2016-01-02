@@ -7,17 +7,25 @@ import std.math;
 import std.typetuple;
 import noise;
 
-Level genLevel(ref Random rng, int size, bool verbose, int radius, int chunk, string tempFile) {
+auto chunkSize = 512;
+auto islandRadius = 256;
+
+Level genLevel(ref Random rng, int size, bool verbose, string tempFile) {
+	foreach (a; animalListString) {
+		auto comp = Tag_Compound();
+		comp["id"] = Tag_String(a.dup);
+		animalList ~= comp;
+	}
+
 	Level lev = new Level(size, tempFile);
 	auto set = Setter(levelSet(lev), levelGet(lev), levelSetEntity(lev));
-	generate(set, rng, size, verbose, radius, chunk);
+	generate(set, rng, size, verbose);
 	fill(lev, Blocks.air, LevelPos(-size, 255, -size), LevelPos(size, 256, size)); //todo light calculating glitches out when block at sky limit
 	return lev;
 }
 
-void generate(Setter set, ref Random rng, int size, bool verbose, int radius = 250,
-	int chunk = 512) {
-	auto iter = size / chunk;
+void generate(Setter set, ref Random rng, int size, bool verbose) {
+	auto iter = size / chunkSize;
 
 	size_t total;
 	foreach (cx; -iter .. iter + 1) {
@@ -28,15 +36,15 @@ void generate(Setter set, ref Random rng, int size, bool verbose, int radius = 2
 	size_t cur;
 	foreach (cx; -iter .. iter + 1) {
 		foreach (cz; -iter .. iter + 1) {
-			auto x = cx * chunk;
-			auto z = cz * chunk;
+			auto x = cx * chunkSize;
+			auto z = cz * chunkSize;
 			import std.stdio;
 
 			if (verbose) {
 				writef("Generating island at (%#5s,%#5s) %s%%\r", x, z, cur * 100 / total);
 				stdout.flush;
 			}
-			genForest(set.from(transformOff(x, 127 - 16, z)), rng, radius);
+			genForest(set.from(transformOff(x, 127 - 16, z)), rng, islandRadius);
 			cur++;
 		}
 	}
@@ -154,8 +162,8 @@ void setIfAir(ref Setter setter) {
 	});
 }
 
-int delegate(int, int) drawNoise(alias check = (int x, int z) => true, alias getHeight)(
-	Setter set, int x2, int z2, Block ground) {
+void drawNoise(alias check = (int x, int z) => true, alias getHeight)(Setter set,
+	int x2, int z2, Block ground) {
 	foreach (x; 0 .. x2) {
 		foreach (z; 0 .. z2) {
 			if (check(x, z)) {
@@ -166,16 +174,17 @@ int delegate(int, int) drawNoise(alias check = (int x, int z) => true, alias get
 			}
 		}
 	}
-	return &getHeight;
 }
 
-enum heightLim = 16; //max height of land 
-enum heightHalf = 8; //water height
-enum sandHeight = 6;
-enum bottomH = heightLim * 4; //height of bottom
-enum caveHeight = 8; //cave air height
-enum caveLim = bottomH / 4;
-enum caveInc = caveLim + caveHeight;
+auto bottomH = 64; //height of bottom
+auto caveHeight = 8; //cave air height
+auto caveLim = 16; //cave rock height
+auto caveInc = 24; //layer difference
+
+auto wallNoiseCycles = 3; //cave walls smoothness
+ubyte wallLimit = 105; //biggest value for a wall (bigger means for cave walls)
+auto caveNoiseCycles = 6; //cave floor smoothness
+
 void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 	auto x2 = radius * 2;
 	auto z2 = radius * 2;
@@ -196,12 +205,12 @@ void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 	int layer;
 
 	while (layer < bottomH) { //caves made in layers
-		auto caveHNoise = genNoise(x2, z2, rng, 3);
-		auto caveGNoise = genNoise(x2, z2, rng, 6);
+		auto caveHNoise = genNoise(x2, z2, rng, wallNoiseCycles);
+		auto caveGNoise = genNoise(x2, z2, rng, caveNoiseCycles);
 		foreach (x; 0 .. x2) {
 			foreach (z; 0 .. z2) {
 				if (check(x, z) && getUnder(x, z) > caveHeight) {
-					if (cast(ubyte)(255 * caveHNoise[x, z]) > 105) {
+					if (cast(ubyte)(255 * caveHNoise[x, z]) > wallLimit) {
 						auto val = layer + cast(int)(caveLim * caveGNoise[x, z]);
 						if (val + caveHeight < getUnder(x, z)) {
 							foreach (i; val .. val + caveHeight) {
@@ -250,12 +259,19 @@ void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 	}
 }
 
+auto heightLim = 16; //max height of land 
+auto heightHalf = 8; //water height
+auto sandHeight = 6; // sand height
+auto landNoiseCycles = 4; //land smoothness (bigger is more smooth)
+Tag_Compound[] animalList;
+string[] animalListString = ["Chicken", "Cow", "Pig", "Rabbit", "Sheep", "EntityHorse"];
+
 void genForest(Setter set, ref Random rng, int radius) {
 	set = set.from(transformOff(-radius, 0, -radius));
 	auto x2 = radius * 2;
 	auto z2 = radius * 2;
 
-	auto noise = genNoise(x2, z2, rng);
+	auto noise = genNoise(x2, z2, rng, landNoiseCycles);
 	auto check(int x, int z) {
 		return hypot(x - radius, z - radius) < radius;
 	}
@@ -372,13 +388,7 @@ void genForest(Setter set, ref Random rng, int radius) {
 
 	auto animals = (x2 * z2) / 128;
 	animals = uniform(animals + 2, animals + 10, rng);
-	Tag_Compound[] animalList;
-	string[] animalListString = ["Chicken", "Cow", "Pig", "Rabbit", "Sheep", "EntityHorse"];
-	foreach (a; animalListString) {
-		auto comp = Tag_Compound();
-		comp["id"] = Tag_String(a.dup);
-		animalList ~= comp;
-	}
+
 	foreach (i; 0 .. animals) {
 		int x;
 		int z;

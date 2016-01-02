@@ -9,6 +9,7 @@ import std.string;
 import std.random;
 import std.getopt;
 import std.conv;
+import std.algorithm : sort;
 
 auto LevelDat(string worldName) {
 	NBTRoot root;
@@ -46,6 +47,32 @@ auto LevelDat(string worldName) {
 	return root;
 }
 
+struct Init {
+	size_t priority;
+	void function() fun;
+}
+
+Init[] initTable;
+template setter(alias symbol, alias regular, size_t priority = 0) {
+	bool thisSet;
+	void setFun(string, string val) {
+		thisSet = true;
+		symbol = val.to!(typeof(symbol));
+	}
+
+	void defaultInit() {
+		if (!thisSet) {
+			symbol = regular();
+		}
+	}
+
+	static this() {
+		initTable ~= Init(priority, &defaultInit);
+	}
+
+	enum setter = &setFun;
+}
+
 void main(string[] args) {
 	bool verbose = true;
 	string world = "world";
@@ -53,8 +80,6 @@ void main(string[] args) {
 	uint seed;
 	uint size = 640;
 	bool seedSet;
-	int radius = 250;
-	int chuck = 512;
 	void setSeed(string, string val) {
 		try {
 			seed = val.to!uint;
@@ -77,8 +102,16 @@ void main(string[] args) {
 
 	bool help;
 	getopt(args, "v|verbose", &verbose, "w|world", &world, "s|seed",
-		&setSeed, "z|size", &size, "r|radius", &radius, "c|chuck", &chuck,
-		"h|help", &help, "t|temp", &setTemp);
+		&setSeed, "z|size", &size, "r|radius", &islandRadius, "c|chuck",
+		setter!(chunkSize, () => islandRadius * 2 + 12), "h|help", &help,
+		"t|temp", &setTemp, "heightLim", &heightLim, "heightHalf",
+		setter!(heightHalf, () => heightLim / 2), "sandHeight",
+		setter!(sandHeight, () => heightHalf - 2, 1), "landNoiseCycles",
+		&landNoiseCycles, "bottomH", &bottomH, "caveHeight", &caveHeight,
+		"caveLim", &caveLim, "caveInc", setter!(caveInc,
+		() => caveHeight + caveLim), "wallNoiseCycles", &wallNoiseCycles,
+		"wallLimit", &wallLimit, "caveNoiseCycles", &caveNoiseCycles,
+		"animals", &animalListString);
 	if (help) {
 		writeln(`world_gen
 -v --verbose=  be loud(default = true)
@@ -86,10 +119,29 @@ void main(string[] args) {
 -s --seed=     world seed
 -z --size=     world size(default = 640)
 -r --radius=   island radius(default = 250)
--c --chuck=    island fequency(recommend radius*2 + 12)
+-c --chuck=    island fequency(radius * 2 + 12)
 -t --temp=     temporary file name (- for none)
+
+
+--heightLim=       height of island top(default = 16)
+--heightHalf=      height of water(default = heightLim / 2)
+--sandHeight=      height of sand(default = heightHalf / 2)
+--landNoiseCycles= land smoothness(bigger is higher)
+--animals=         list of animals(default = ["Chicken", "Cow", "Pig", "Rabbit", "Sheep", "EntityHorse"])
+
+--bottomH=         height of island bottom(default = 64)
+--caveHeight=      exact height of cave in air(default = 8)
+--caveLim=         height of cave bottom(default = 16)
+--caveInc=         cave layer difference(default = caveHeight + caveInc)
+--wallNoiseCycles= cave wall smoothness(default = 3)
+--wallLimit=       ofteness of cave walls(bigger is more often)(default = 105)
+--caveNoiseCycles= cave floor smoothness(default = 6)
 `);
 		return;
+	}
+	initTable.sort!"a.priority < b.priority";
+	foreach (set; initTable) {
+		set.fun();
 	}
 
 	if (exists(world)) {
@@ -124,7 +176,7 @@ void main(string[] args) {
 	} else {
 		rng = rndGen();
 	}
-	auto lev = genLevel(rng, size, verbose, radius, chuck, tempFile);
+	auto lev = genLevel(rng, size, verbose, tempFile);
 	lev.calculateLightandWater(verbose);
 	lev.save(region, verbose);
 }
