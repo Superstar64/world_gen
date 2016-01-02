@@ -10,7 +10,7 @@ import std.random;
 import std.getopt;
 import std.conv;
 import std.algorithm : sort;
-
+auto spawny = 128;
 auto LevelDat(string worldName) {
 	NBTRoot root;
 	{
@@ -31,7 +31,7 @@ auto LevelDat(string worldName) {
 			data["Time"] = Tag_Long(0);
 			data["DayTime"] = Tag_Long(0);
 			data["SpawnX"] = Tag_Int(0);
-			data["SpawnY"] = Tag_Int(128);
+			data["SpawnY"] = Tag_Int(spawny);
 			data["SpawnZ"] = Tag_Int(0);
 			data["raining"] = Tag_Byte(0);
 			data["rainTime"] = Tag_Int(60 * 20);
@@ -39,7 +39,7 @@ auto LevelDat(string worldName) {
 			data["thunderTime"] = Tag_Int(0);
 			data["clearWeatherTime"] = Tag_Int(60 * 60 * 20);
 			auto player = Tag_Compound();
-			player["Pos"] = Tag_List([Tag_Double(0), Tag_Double(128), Tag_Double(0)]);
+			player["Pos"] = Tag_List([Tag_Double(0), Tag_Double(spawny), Tag_Double(0)]);
 			data["Player"] = player;
 		}
 		root.tag["Data"] = data;
@@ -111,7 +111,7 @@ void main(string[] args) {
 		"caveLim", &caveLim, "caveInc", setter!(caveInc,
 		() => caveHeight + caveLim), "wallNoiseCycles", &wallNoiseCycles,
 		"wallLimit", &wallLimit, "caveNoiseCycles", &caveNoiseCycles,
-		"animals", &animalListString);
+		"animals", &animalListString,"spawny",&spawny);
 	if (help) {
 		writeln(`world_gen
 -v --verbose=  be loud(default = true)
@@ -136,6 +136,7 @@ void main(string[] args) {
 --wallNoiseCycles= cave wall smoothness(default = 3)
 --wallLimit=       ofteness of cave walls(bigger is more often)(default = 105)
 --caveNoiseCycles= cave floor smoothness(default = 6)
+--spawny=          set player spawn y(default = 128)
 `);
 		return;
 	}
