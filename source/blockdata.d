@@ -14,7 +14,7 @@ struct BlockData {
 	Transparent trans;
 	bool search = true;
 	ubyte meta;
-	@property private Block _get() {
+	@property Block _get() {
 		return Block(id, meta);
 	}
 

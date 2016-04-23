@@ -5,6 +5,7 @@ import std.random;
 import std.algorithm;
 import std.math;
 import std.typetuple;
+import std.stdio;
 import noise;
 
 auto chunkSize = 512;
