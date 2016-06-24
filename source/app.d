@@ -111,7 +111,7 @@ void main(string[] args) {
 		"caveLim", &caveLim, "caveInc", setter!(caveInc,
 		() => caveHeight + caveLim), "wallNoiseCycles", &wallNoiseCycles,
 		"wallLimit", &wallLimit, "caveNoiseCycles", &caveNoiseCycles,
-		"animals", &animalListString,"spawny",&spawny);
+		"animals", &animalListString,"deepLava",&deepLava,"spawny",&spawny);
 	if (help) {
 		writeln(`world_gen
 -v --verbose=  be loud(default = true)
@@ -136,6 +136,7 @@ void main(string[] args) {
 --wallNoiseCycles= cave wall smoothness(default = 3)
 --wallLimit=       ofteness of cave walls(bigger is more often)(default = 105)
 --caveNoiseCycles= cave floor smoothness(default = 6)
+--deepLava=        spawn more lava the deeper the cave is(in blocks)(default = 5)
 --spawny=          set player spawn y(default = 128)
 `);
 		return;

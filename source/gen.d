@@ -185,7 +185,7 @@ auto caveInc = 24; //layer difference
 auto wallNoiseCycles = 3; //cave walls smoothness
 ubyte wallLimit = 105; //biggest value for a wall (bigger means for cave walls)
 auto caveNoiseCycles = 6; //cave floor smoothness
-
+int deepLava = 5;//spawn more lava the deeper the cave is
 void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 	auto x2 = radius * 2;
 	auto z2 = radius * 2;
@@ -215,7 +215,7 @@ void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 						auto val = layer + cast(int)(caveLim * caveGNoise[x, z]);
 						if (val + caveHeight < getUnder(x, z)) {
 							foreach (i; val .. val + caveHeight) {
-								if (i - layer > caveLim / 2 + caveHeight / 2) {
+								if (i - layer + deepLava * layer / bottomH > caveInc / 2) {
 									underset[x, i, z] = Blocks.lava;
 								} else {
 									underset[x, i, z] = Blocks.air;
