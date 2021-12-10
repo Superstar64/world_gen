@@ -1,3 +1,3 @@
 rm -rf world
-rm world_gen
-rm __test__library__
+rm -f world_gen
+rm -f __test__library__

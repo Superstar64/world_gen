@@ -227,7 +227,7 @@ private struct Chunk {
 		}
 	}
 
-	ref int getHeight(uint x, uint z) {
+	ref int getHeight(uint x, uint z) return {
 		return heightMap[x + z * 16];
 	}
 
@@ -407,7 +407,7 @@ private:
 	out(result) {
 		assert(result < 16);
 	}
-	body {
+	do {
 		assert(y < 256);
 		if (!exists2(x, z)) {
 			return 0;
@@ -419,7 +419,7 @@ private:
 	out(result) {
 		assert(result < 16);
 	}
-	body {
+	do {
 		assert(y < 256);
 		if (!exists2(x, z)) {
 			return 0;
@@ -431,7 +431,7 @@ private:
 	out(result) {
 		assert(result < 16);
 	}
-	body {
+	do {
 		assert(y < 256);
 		if (!exists2(x, z)) {
 			return 0;

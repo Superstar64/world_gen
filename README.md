@@ -1,5 +1,6 @@
 # world_gen
-Poorly written working in progress minecraft world generator
+A terrarin generator for minecraft that generates floating islands.
+
 ![land](/screenshots/land.png)
 ![cave](/screenshots/cave.png)
 requires dmd and dub to build

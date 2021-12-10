@@ -213,8 +213,8 @@ void genUnderSide(alias check)(Setter set, ref Random rng, int radius) {
 			return sqrt(1 - (num - 1) ^^ 2);
 		}
 
-		return cast(int)(bottomH * cirleFilter((radius - hypot(x - radius,
-			z - radius)) / (cast(double) radius)));
+		return cast(int)(bottomH * cirleFilter((radius - hypot(cast(double)(x - radius),
+			cast(double)(z - radius))) / (cast(double) radius)));
 	}
 
 	drawNoise!(check, getUnder)(underset, x2, z2, Blocks.stone);
@@ -290,7 +290,7 @@ void genForest(Setter set, ref Random rng, int radius) {
 
 	auto noise = genNoise(x2, z2, rng, landNoiseCycles);
 	auto check(int x, int z) {
-		return hypot(x - radius, z - radius) < radius;
+		return hypot(cast(double)(x - radius), cast(double)(z - radius)) < radius;
 	}
 
 	auto getHeight(int x, int z) {
