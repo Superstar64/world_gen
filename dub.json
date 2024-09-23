@@ -3,7 +3,6 @@
 	"description": "A minimal D application.",
 	"copyright": "Copyright © 2015, superstar64",
 	"authors": ["superstar64"],
-	"dependencies": {
-		"tagged_union": "~>1.1.2"
-	}
+	"dependencies": {},
+	"libs" : ["z"]
 }
